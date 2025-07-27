@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -17,6 +17,34 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Posts table - handles both investment opportunities and regular community posts
+export const posts = pgTable("posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  authorId: varchar("author_id").references(() => users.id).notNull(),
+  postType: text("post_type").notNull(), // 'investment' | 'community'
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  category: text("category"),
+  images: jsonb("images").$type<string[]>().default([]),
+  attachments: jsonb("attachments").$type<string[]>().default([]),
+  
+  // Investment-specific fields (only used when postType = 'investment')
+  fundingMin: integer("funding_min"),
+  fundingMax: integer("funding_max"),
+  useOfFunds: text("use_of_funds"),
+  timeline: text("timeline"),
+  expectedRoi: text("expected_roi"),
+  teamSize: integer("team_size"),
+  businessPlan: text("business_plan"),
+  
+  status: text("status").default("pending"), // 'pending' | 'approved' | 'rejected'
+  isActive: boolean("is_active").default(true),
+  views: integer("views").default(0),
+  likes: integer("likes").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Keep business listings for backward compatibility (will migrate existing data)
 export const businessListings = pgTable("business_listings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   entrepreneurId: varchar("entrepreneur_id").references(() => users.id).notNull(),
@@ -41,7 +69,8 @@ export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   senderId: varchar("sender_id").references(() => users.id).notNull(),
   receiverId: varchar("receiver_id").references(() => users.id).notNull(),
-  listingId: varchar("listing_id").references(() => businessListings.id),
+  postId: varchar("post_id").references(() => posts.id),
+  listingId: varchar("listing_id").references(() => businessListings.id), // Keep for backward compatibility
   content: text("content").notNull(),
   messageType: text("message_type").default("text"), // 'text' | 'file'
   fileUrl: text("file_url"),
@@ -62,17 +91,29 @@ export const ratings = pgTable("ratings", {
 export const interests = pgTable("interests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   investorId: varchar("investor_id").references(() => users.id).notNull(),
-  listingId: varchar("listing_id").references(() => businessListings.id).notNull(),
+  postId: varchar("post_id").references(() => posts.id),
+  listingId: varchar("listing_id").references(() => businessListings.id), // Keep for backward compatibility
   message: text("message"),
   status: text("status").default("pending"), // 'pending' | 'accepted' | 'rejected'
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Post likes table for community engagement
+export const postLikes = pgTable("post_likes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  postId: varchar("post_id").references(() => posts.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userPostUnique: unique().on(table.userId, table.postId),
+}));
+
 export const reports = pgTable("reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   reporterId: varchar("reporter_id").references(() => users.id).notNull(),
   reportedUserId: varchar("reported_user_id").references(() => users.id),
-  listingId: varchar("listing_id").references(() => businessListings.id),
+  postId: varchar("post_id").references(() => posts.id),
+  listingId: varchar("listing_id").references(() => businessListings.id), // Keep for backward compatibility
   reason: text("reason").notNull(),
   description: text("description"),
   status: text("status").default("pending"), // 'pending' | 'resolved' | 'dismissed'
@@ -82,6 +123,7 @@ export const reports = pgTable("reports", {
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   listings: many(businessListings),
+  posts: many(posts),
   sentMessages: many(messages, { relationName: "sender" }),
   receivedMessages: many(messages, { relationName: "receiver" }),
   givenRatings: many(ratings, { relationName: "rater" }),
@@ -89,6 +131,29 @@ export const usersRelations = relations(users, ({ many }) => ({
   interests: many(interests),
   reports: many(reports, { relationName: "reporter" }),
   reportedBy: many(reports, { relationName: "reported" }),
+  likes: many(postLikes),
+}));
+
+export const postsRelations = relations(posts, ({ one, many }) => ({
+  author: one(users, {
+    fields: [posts.authorId],
+    references: [users.id],
+  }),
+  messages: many(messages),
+  interests: many(interests),
+  reports: many(reports),
+  likes: many(postLikes),
+}));
+
+export const postLikesRelations = relations(postLikes, ({ one }) => ({
+  user: one(users, {
+    fields: [postLikes.userId],
+    references: [users.id],
+  }),
+  post: one(posts, {
+    fields: [postLikes.postId],
+    references: [posts.id],
+  }),
 }));
 
 export const businessListingsRelations = relations(businessListings, ({ one, many }) => ({
@@ -201,11 +266,28 @@ export const insertReportSchema = createInsertSchema(reports).omit({
   status: true,
 });
 
+export const insertPostSchema = createInsertSchema(posts).omit({
+  id: true,
+  createdAt: true,
+  status: true,
+  views: true,
+  likes: true,
+});
+
+export const insertPostLikeSchema = createInsertSchema(postLikes).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type BusinessListing = typeof businessListings.$inferSelect;
 export type InsertBusinessListing = z.infer<typeof insertBusinessListingSchema>;
+export type Post = typeof posts.$inferSelect;
+export type InsertPost = z.infer<typeof insertPostSchema>;
+export type PostLike = typeof postLikes.$inferSelect;
+export type InsertPostLike = z.infer<typeof insertPostLikeSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Rating = typeof ratings.$inferSelect;

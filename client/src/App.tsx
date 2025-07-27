@@ -8,7 +8,9 @@ import OnboardingPage from "@/pages/onboarding";
 import UserTypeSelectionPage from "@/pages/user-type-selection";
 import RegistrationPage from "@/pages/registration";
 import DashboardPage from "@/pages/dashboard";
+import UnifiedDashboard from "@/pages/unified-dashboard";
 import CreateListingPage from "@/pages/create-listing";
+import CreatePostPage from "@/pages/create-post";
 import OpportunityDetailPage from "@/pages/opportunity-detail";
 import ChatPage from "@/pages/chat";
 import ProfilePage from "@/pages/profile";
@@ -25,18 +27,23 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={authService.isAuthenticated() ? DashboardPage : OnboardingPage} />
+      <Route path="/" component={authService.isAuthenticated() ? UnifiedDashboard : OnboardingPage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/user-type" component={UserTypeSelectionPage} />
       <Route path="/register" component={RegistrationPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
-          <DashboardPage />
+          <UnifiedDashboard />
         </ProtectedRoute>
       </Route>
       <Route path="/create-listing">
         <ProtectedRoute>
           <CreateListingPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/create-post">
+        <ProtectedRoute>
+          <CreatePostPage />
         </ProtectedRoute>
       </Route>
       <Route path="/opportunity/:id">

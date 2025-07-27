@@ -4,7 +4,7 @@ import { useLocation, useParams } from "wouter";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Phone, MoreVertical, Paperclip, Smile, Send, Download } from "lucide-react";
+import { ArrowLeft, Phone, MoreVertical, Paperclip, Smile, Send, Download, FileText } from "lucide-react";
 import { authenticatedApiRequest, authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 

@@ -1,6 +1,8 @@
 import { 
   users, 
   businessListings, 
+  posts,
+  postLikes,
   messages, 
   ratings, 
   interests, 
@@ -9,6 +11,10 @@ import {
   type InsertUser,
   type BusinessListing,
   type InsertBusinessListing,
+  type Post,
+  type InsertPost,
+  type PostLike,
+  type InsertPostLike,
   type Message,
   type InsertMessage,
   type Rating,
@@ -28,7 +34,26 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
   
-  // Business listing methods
+  // Posts methods (unified for investment & community posts)
+  createPost(post: InsertPost): Promise<Post>;
+  getPosts(filters?: {
+    postType?: 'investment' | 'community';
+    category?: string;
+    city?: string;
+    fundingMin?: number;
+    fundingMax?: number;
+    search?: string;
+    status?: string;
+  }): Promise<Post[]>;
+  getPost(id: string): Promise<Post | undefined>;
+  updatePost(id: string, updates: Partial<Post>): Promise<Post>;
+  getUserPosts(userId: string): Promise<Post[]>;
+  deletePost(id: string): Promise<void>;
+  likePost(userId: string, postId: string): Promise<void>;
+  unlikePost(userId: string, postId: string): Promise<void>;
+  getPostLikes(postId: string): Promise<PostLike[]>;
+  
+  // Business listing methods (kept for backward compatibility)
   createBusinessListing(listing: InsertBusinessListing): Promise<BusinessListing>;
   getBusinessListings(filters?: {
     category?: string;
@@ -95,6 +120,103 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
     const [user] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
     return user;
+  }
+
+  // Posts methods
+  async createPost(post: InsertPost): Promise<Post> {
+    const [newPost] = await db.insert(posts).values(post).returning();
+    return newPost;
+  }
+
+  async getPosts(filters?: {
+    postType?: 'investment' | 'community';
+    category?: string;
+    city?: string;
+    fundingMin?: number;
+    fundingMax?: number;
+    search?: string;
+    status?: string;
+  }): Promise<Post[]> {
+    const conditions = [eq(posts.isActive, true)];
+    
+    if (filters?.status) {
+      conditions.push(eq(posts.status, filters.status));
+    } else {
+      conditions.push(eq(posts.status, "approved"));
+    }
+    
+    if (filters?.postType) {
+      conditions.push(eq(posts.postType, filters.postType));
+    }
+    
+    if (filters?.category) {
+      conditions.push(eq(posts.category, filters.category));
+    }
+    
+    if (filters?.search) {
+      conditions.push(
+        or(
+          ilike(posts.title, `%${filters.search}%`),
+          ilike(posts.content, `%${filters.search}%`)
+        )!
+      );
+    }
+    
+    if (filters?.fundingMin && filters.postType === 'investment') {
+      conditions.push(eq(posts.fundingMin, filters.fundingMin));
+    }
+    
+    if (filters?.fundingMax && filters.postType === 'investment') {
+      conditions.push(eq(posts.fundingMax, filters.fundingMax));
+    }
+    
+    return await db.select().from(posts).where(and(...conditions)).orderBy(desc(posts.createdAt));
+  }
+
+  async getPost(id: string): Promise<Post | undefined> {
+    const [post] = await db.select().from(posts).where(eq(posts.id, id));
+    return post || undefined;
+  }
+
+  async updatePost(id: string, updates: Partial<Post>): Promise<Post> {
+    const [post] = await db.update(posts).set(updates).where(eq(posts.id, id)).returning();
+    return post;
+  }
+
+  async getUserPosts(userId: string): Promise<Post[]> {
+    return await db.select().from(posts)
+      .where(and(eq(posts.authorId, userId), eq(posts.isActive, true)))
+      .orderBy(desc(posts.createdAt));
+  }
+
+  async deletePost(id: string): Promise<void> {
+    await db.update(posts).set({ isActive: false }).where(eq(posts.id, id));
+  }
+
+  async likePost(userId: string, postId: string): Promise<void> {
+    try {
+      await db.insert(postLikes).values({ userId, postId });
+      // Increment like count on post
+      const post = await this.getPost(postId);
+      if (post) {
+        await this.updatePost(postId, { likes: (post.likes || 0) + 1 });
+      }
+    } catch (error) {
+      // Like already exists, ignore
+    }
+  }
+
+  async unlikePost(userId: string, postId: string): Promise<void> {
+    await db.delete(postLikes).where(and(eq(postLikes.userId, userId), eq(postLikes.postId, postId)));
+    // Decrement like count on post
+    const post = await this.getPost(postId);
+    if (post && (post.likes || 0) > 0) {
+      await this.updatePost(postId, { likes: (post.likes || 0) - 1 });
+    }
+  }
+
+  async getPostLikes(postId: string): Promise<PostLike[]> {
+    return await db.select().from(postLikes).where(eq(postLikes.postId, postId));
   }
 
   async createBusinessListing(listing: InsertBusinessListing): Promise<BusinessListing> {

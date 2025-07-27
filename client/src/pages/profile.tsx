@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -79,7 +79,7 @@ export default function ProfilePage() {
   });
 
   // Update form defaults when profile data loads
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       form.reset({
         fullName: profile.fullName,
@@ -88,7 +88,7 @@ export default function ProfilePage() {
         phone: profile.phone,
       });
     }
-  }, [profile]);
+  }, [profile, form]);
 
   const updateProfile = useMutation({
     mutationFn: async (data: UpdateProfileForm) => {

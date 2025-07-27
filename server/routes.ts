@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
-import { insertUserSchema, insertBusinessListingSchema, insertMessageSchema, insertRatingSchema, insertInterestSchema, insertReportSchema } from "@shared/schema";
+import { insertUserSchema, insertBusinessListingSchema, insertPostSchema, insertMessageSchema, insertRatingSchema, insertInterestSchema, insertReportSchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -189,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Increment view count
-      await storage.updateBusinessListing(req.params.id, { views: listing.views + 1 });
+      await storage.updateBusinessListing(req.params.id, { views: (listing.views || 0) + 1 });
       
       res.json(listing);
     } catch (error) {
@@ -251,6 +251,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get user listings error:", error);
       res.status(500).json({ message: "Failed to get user listings" });
+    }
+  });
+
+  // Post routes (unified investment & community posts)
+  app.post("/api/posts", authenticateToken, async (req: any, res) => {
+    try {
+      const postData = insertPostSchema.parse({
+        ...req.body,
+        authorId: req.user.userId,
+      });
+      
+      const post = await storage.createPost(postData);
+      res.json(post);
+    } catch (error) {
+      console.error("Create post error:", error);
+      res.status(400).json({ message: "Failed to create post" });
+    }
+  });
+
+  app.get("/api/posts", async (req, res) => {
+    try {
+      const filters = {
+        postType: req.query.postType as 'investment' | 'community' | undefined,
+        category: req.query.category as string,
+        city: req.query.city as string,
+        fundingMin: req.query.fundingMin ? parseInt(req.query.fundingMin as string) : undefined,
+        fundingMax: req.query.fundingMax ? parseInt(req.query.fundingMax as string) : undefined,
+        search: req.query.search as string,
+        status: req.query.status as string,
+      };
+      
+      const posts = await storage.getPosts(filters);
+      res.json(posts);
+    } catch (error) {
+      console.error("Get posts error:", error);
+      res.status(500).json({ message: "Failed to get posts" });
+    }
+  });
+
+  app.get("/api/posts/:id", async (req, res) => {
+    try {
+      const post = await storage.getPost(req.params.id);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      
+      // Increment view count
+      await storage.updatePost(req.params.id, { views: (post.views || 0) + 1 });
+      
+      res.json(post);
+    } catch (error) {
+      console.error("Get post error:", error);
+      res.status(500).json({ message: "Failed to get post" });
+    }
+  });
+
+  app.put("/api/posts/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const post = await storage.getPost(req.params.id);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      
+      // Check if user owns the post or is admin
+      if (post.authorId !== req.user.userId) {
+        const user = await storage.getUser(req.user.userId);
+        if (user?.userType !== 'admin') {
+          return res.status(403).json({ message: "Unauthorized" });
+        }
+      }
+      
+      const updatedPost = await storage.updatePost(req.params.id, req.body);
+      res.json(updatedPost);
+    } catch (error) {
+      console.error("Update post error:", error);
+      res.status(500).json({ message: "Failed to update post" });
+    }
+  });
+
+  app.delete("/api/posts/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const post = await storage.getPost(req.params.id);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      
+      // Check if user owns the post or is admin
+      if (post.authorId !== req.user.userId) {
+        const user = await storage.getUser(req.user.userId);
+        if (user?.userType !== 'admin') {
+          return res.status(403).json({ message: "Unauthorized" });
+        }
+      }
+      
+      await storage.deletePost(req.params.id);
+      res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+      console.error("Delete post error:", error);
+      res.status(500).json({ message: "Failed to delete post" });
+    }
+  });
+
+  app.get("/api/users/me/posts", authenticateToken, async (req: any, res) => {
+    try {
+      const posts = await storage.getUserPosts(req.user.userId);
+      res.json(posts);
+    } catch (error) {
+      console.error("Get user posts error:", error);
+      res.status(500).json({ message: "Failed to get user posts" });
+    }
+  });
+
+  app.post("/api/posts/:id/like", authenticateToken, async (req: any, res) => {
+    try {
+      await storage.likePost(req.user.userId, req.params.id);
+      res.json({ message: "Post liked successfully" });
+    } catch (error) {
+      console.error("Like post error:", error);
+      res.status(500).json({ message: "Failed to like post" });
+    }
+  });
+
+  app.delete("/api/posts/:id/like", authenticateToken, async (req: any, res) => {
+    try {
+      await storage.unlikePost(req.user.userId, req.params.id);
+      res.json({ message: "Post unliked successfully" });
+    } catch (error) {
+      console.error("Unlike post error:", error);
+      res.status(500).json({ message: "Failed to unlike post" });
+    }
+  });
+
+  app.get("/api/posts/:id/likes", async (req, res) => {
+    try {
+      const likes = await storage.getPostLikes(req.params.id);
+      res.json(likes);
+    } catch (error) {
+      console.error("Get post likes error:", error);
+      res.status(500).json({ message: "Failed to get post likes" });
     }
   });
 
