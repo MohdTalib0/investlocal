@@ -16,6 +16,9 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
   },
+  css: {
+    postcss: false, // Disable PostCSS processing
+  },
   server: {
     fs: {
       strict: true,
