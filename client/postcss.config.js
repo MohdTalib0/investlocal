@@ -1,4 +1,4 @@
 // Empty PostCSS config to avoid plugin loading issues
-module.exports = {
+export default {
   plugins: {}
 } 
