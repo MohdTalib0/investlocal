@@ -1,0 +1,48 @@
+name: Keep Render Service Alive
+
+on:
+  schedule:
+    # Run every 14 minutes to keep the service alive
+    # Render free tier stops after 15 minutes of inactivity
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping-service:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Ping Render Service
+      run: |
+        echo "🔄 Pinging Render service at $(date)"
+        
+        # Get the service URL from environment or use a default
+        SERVICE_URL="${{ secrets.RENDER_SERVICE_URL }}"
+        
+        if [ -z "$SERVICE_URL" ]; then
+          echo "⚠️  RENDER_SERVICE_URL secret not set, using default"
+          SERVICE_URL="https://your-app-name.onrender.com"
+        fi
+        
+        echo "📍 Service URL: $SERVICE_URL"
+        
+        # Try to ping the health endpoint
+        response=$(curl -s -w "%{http_code}" -o /tmp/response.json "$SERVICE_URL/health" || echo "000")
+        http_code="${response: -3}"
+        
+        if [ "$http_code" = "200" ]; then
+          echo "✅ Service is alive and responding"
+          cat /tmp/response.json | jq '.'
+        else
+          echo "❌ Service ping failed with HTTP code: $http_code"
+          echo "📄 Response:"
+          cat /tmp/response.json 2>/dev/null || echo "No response body"
+        fi
+        
+        echo "🕐 Ping completed at $(date)"
+        
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "🚨 Keep-alive ping failed!"
+        echo "Check your Render service status at: https://dashboard.render.com" 
