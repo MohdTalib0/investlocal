@@ -22,7 +22,7 @@ export const posts = pgTable("posts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   authorId: varchar("author_id").references(() => users.id).notNull(),
   postType: text("post_type").notNull(), // 'investment' | 'community'
-  title: text("title").notNull(),
+  title: text("title"), // Optional - mainly for investment posts
   content: text("content").notNull(),
   category: text("category"),
   images: jsonb("images").$type<string[]>().default([]),
@@ -108,6 +108,15 @@ export const postLikes = pgTable("post_likes", {
   userPostUnique: unique().on(table.userId, table.postId),
 }));
 
+export const comments = pgTable("comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  postId: varchar("post_id").references(() => posts.id).notNull(),
+  content: text("content").notNull(),
+  parentId: varchar("parent_id"), // For nested comments - will reference comments.id
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const reports = pgTable("reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   reporterId: varchar("reporter_id").references(() => users.id).notNull(),
@@ -143,6 +152,7 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   interests: many(interests),
   reports: many(reports),
   likes: many(postLikes),
+  comments: many(comments),
 }));
 
 export const postLikesRelations = relations(postLikes, ({ one }) => ({
@@ -153,6 +163,25 @@ export const postLikesRelations = relations(postLikes, ({ one }) => ({
   post: one(posts, {
     fields: [postLikes.postId],
     references: [posts.id],
+  }),
+}));
+
+export const commentsRelations = relations(comments, ({ one, many }) => ({
+  user: one(users, {
+    fields: [comments.userId],
+    references: [users.id],
+  }),
+  post: one(posts, {
+    fields: [comments.postId],
+    references: [posts.id],
+  }),
+  parent: one(comments, {
+    fields: [comments.parentId],
+    references: [comments.id],
+    relationName: "parent",
+  }),
+  replies: many(comments, {
+    relationName: "parent",
   }),
 }));
 
@@ -239,7 +268,6 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const insertBusinessListingSchema = createInsertSchema(businessListings).omit({
   id: true,
   createdAt: true,
-  status: true,
   views: true,
 });
 
@@ -269,7 +297,6 @@ export const insertReportSchema = createInsertSchema(reports).omit({
 export const insertPostSchema = createInsertSchema(posts).omit({
   id: true,
   createdAt: true,
-  status: true,
   views: true,
   likes: true,
 });
@@ -279,15 +306,30 @@ export const insertPostLikeSchema = createInsertSchema(postLikes).omit({
   createdAt: true,
 });
 
+export const insertCommentSchema = createInsertSchema(comments).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type BusinessListing = typeof businessListings.$inferSelect;
 export type InsertBusinessListing = z.infer<typeof insertBusinessListingSchema>;
-export type Post = typeof posts.$inferSelect;
+export type Post = typeof posts.$inferSelect & {
+  author?: {
+    id: string;
+    fullName: string;
+    email: string;
+    userType: string;
+    avatar: string | null;
+  } | null;
+};
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type PostLike = typeof postLikes.$inferSelect;
 export type InsertPostLike = z.infer<typeof insertPostLikeSchema>;
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Rating = typeof ratings.$inferSelect;

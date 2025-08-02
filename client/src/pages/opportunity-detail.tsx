@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Share, Bookmark, Calendar, TrendingUp, Users, Trophy, FileText, Shield, Star } from "lucide-react";
 import { authenticatedApiRequest } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import BottomNavigation from "@/components/bottom-navigation";
 
 interface BusinessListing {
   id: string;
@@ -69,11 +70,11 @@ export default function OpportunityDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50">
+      <div className="min-h-screen bg-black">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-neutral-600">Loading opportunity...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-400">Loading opportunity...</p>
           </div>
         </div>
       </div>
@@ -82,12 +83,12 @@ export default function OpportunityDetailPage() {
 
   if (!listing) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4">😕</div>
-          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Opportunity not found</h2>
-          <p className="text-neutral-600 mb-4">The listing you're looking for doesn't exist.</p>
-          <Button onClick={() => setLocation("/dashboard")}>
+          <h2 className="text-xl font-semibold text-white mb-2">Opportunity not found</h2>
+          <p className="text-gray-400 mb-4">The listing you're looking for doesn't exist.</p>
+          <Button onClick={() => setLocation("/dashboard")} className="bg-blue-600 hover:bg-blue-700">
             Back to Dashboard
           </Button>
         </div>
@@ -96,7 +97,7 @@ export default function OpportunityDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-20">
+    <div className="min-h-screen bg-black pb-20">
       {/* Image Header */}
       <div className="relative h-64 bg-gray-200">
         {listing.images.length > 0 ? (
@@ -120,16 +121,16 @@ export default function OpportunityDetailPage() {
           <Button 
             variant="secondary"
             size="icon"
-            className="bg-white bg-opacity-90"
+            className="bg-gray-900 bg-opacity-90 text-white hover:bg-gray-800"
             onClick={() => setLocation("/dashboard")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex space-x-2">
-            <Button variant="secondary" size="icon" className="bg-white bg-opacity-90">
+            <Button variant="secondary" size="icon" className="bg-gray-900 bg-opacity-90 text-white hover:bg-gray-800">
               <Share className="h-4 w-4" />
             </Button>
-            <Button variant="secondary" size="icon" className="bg-white bg-opacity-90">
+            <Button variant="secondary" size="icon" className="bg-gray-900 bg-opacity-90 text-white hover:bg-gray-800">
               <Bookmark className="h-4 w-4" />
             </Button>
           </div>
@@ -137,17 +138,17 @@ export default function OpportunityDetailPage() {
 
         {/* Quick Info Overlay */}
         <div className="absolute bottom-4 left-6 right-6">
-          <div className="bg-white bg-opacity-95 rounded-xl p-4 backdrop-blur-sm">
+          <div className="bg-gray-900 bg-opacity-95 rounded-xl p-4 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-lg font-bold text-neutral-900">{listing.title}</h1>
-                <p className="text-sm text-neutral-600">Barabanki, UP</p>
+                <h1 className="text-lg font-bold text-white">{listing.title}</h1>
+                <p className="text-sm text-gray-400">Barabanki, UP</p>
               </div>
               <div className="text-right">
-                <p className="text-xl font-bold text-primary">
+                <p className="text-xl font-bold text-blue-400">
                   {formatAmount(listing.fundingMin)}-{formatAmount(listing.fundingMax)}
                 </p>
-                <p className="text-sm text-neutral-600">Investment Range</p>
+                <p className="text-sm text-gray-400">Investment Range</p>
               </div>
             </div>
           </div>
@@ -159,71 +160,71 @@ export default function OpportunityDetailPage() {
         
         {/* Entrepreneur Info */}
         <div className="flex items-center space-x-4">
-          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-lg font-semibold text-primary">E</span>
+          <div className="w-14 h-14 rounded-full bg-blue-600/20 flex items-center justify-center">
+            <span className="text-lg font-semibold text-blue-400">E</span>
           </div>
           <div className="flex-1">
             <div className="flex items-center space-x-2">
-              <h3 className="font-semibold text-neutral-900">Entrepreneur</h3>
-              <div className="flex items-center text-green-500">
+              <h3 className="font-semibold text-white">Entrepreneur</h3>
+              <div className="flex items-center text-green-400">
                 <Star className="h-3 w-3 mr-1" />
                 <span className="text-sm">Verified</span>
               </div>
             </div>
-            <p className="text-sm text-neutral-600">5+ years experience • {listing.category}</p>
+            <p className="text-sm text-gray-400">5+ years experience • {listing.category}</p>
             <div className="flex items-center space-x-2 mt-1">
               <div className="flex items-center">
                 <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                <span className="text-sm text-neutral-600 ml-1">4.8 (12 reviews)</span>
+                <span className="text-sm text-gray-400 ml-1">4.8 (12 reviews)</span>
               </div>
             </div>
           </div>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="border-gray-600 text-white hover:bg-gray-800">
             View Profile
           </Button>
         </div>
 
         {/* Key Details */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-neutral-50 rounded-xl p-4 text-center">
-            <Calendar className="h-6 w-6 text-primary mx-auto mb-2" />
-            <p className="text-sm text-neutral-600">Timeline</p>
-            <p className="font-semibold text-neutral-900">{listing.timeline || "6-12 months"}</p>
+          <div className="bg-gray-900 rounded-xl p-4 text-center">
+            <Calendar className="h-6 w-6 text-blue-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-400">Timeline</p>
+            <p className="font-semibold text-white">{listing.timeline || "6-12 months"}</p>
           </div>
-          <div className="bg-neutral-50 rounded-xl p-4 text-center">
-            <TrendingUp className="h-6 w-6 text-secondary mx-auto mb-2" />
-            <p className="text-sm text-neutral-600">Expected ROI</p>
-            <p className="font-semibold text-neutral-900">{listing.expectedRoi || "20-25%"}</p>
+          <div className="bg-gray-900 rounded-xl p-4 text-center">
+            <TrendingUp className="h-6 w-6 text-green-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-400">Expected ROI</p>
+            <p className="font-semibold text-white">{listing.expectedRoi || "20-25%"}</p>
           </div>
-          <div className="bg-neutral-50 rounded-xl p-4 text-center">
-            <Users className="h-6 w-6 text-accent mx-auto mb-2" />
-            <p className="text-sm text-neutral-600">Team Size</p>
-            <p className="font-semibold text-neutral-900">{listing.teamSize || 8} members</p>
+          <div className="bg-gray-900 rounded-xl p-4 text-center">
+            <Users className="h-6 w-6 text-yellow-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-400">Team Size</p>
+            <p className="font-semibold text-white">{listing.teamSize || 8} members</p>
           </div>
-          <div className="bg-neutral-50 rounded-xl p-4 text-center">
-            <Trophy className="h-6 w-6 text-purple-500 mx-auto mb-2" />
-            <p className="text-sm text-neutral-600">Success Rate</p>
-            <p className="font-semibold text-neutral-900">85%</p>
+          <div className="bg-gray-900 rounded-xl p-4 text-center">
+            <Trophy className="h-6 w-6 text-purple-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-400">Success Rate</p>
+            <p className="font-semibold text-white">85%</p>
           </div>
         </div>
 
         {/* Description */}
         <div>
-          <h3 className="font-semibold text-neutral-900 mb-3">About This Opportunity</h3>
-          <p className="text-neutral-700 leading-relaxed">
+          <h3 className="font-semibold text-white mb-3">About This Opportunity</h3>
+          <p className="text-gray-300 leading-relaxed">
             {listing.description}
           </p>
         </div>
 
         {/* Business Plan */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="bg-blue-600/10 border border-blue-600/30 rounded-xl p-4">
           <div className="flex items-center space-x-3">
-            <FileText className="h-6 w-6 text-blue-500" />
+            <FileText className="h-6 w-6 text-blue-400" />
             <div className="flex-1">
-              <h4 className="font-medium text-blue-900">Business Plan Available</h4>
-              <p className="text-sm text-blue-700">Detailed financial projections and market analysis</p>
+              <h4 className="font-medium text-blue-300">Business Plan Available</h4>
+              <p className="text-sm text-blue-200">Detailed financial projections and market analysis</p>
             </div>
-            <Button variant="outline" size="sm" className="text-blue-600 border-blue-600">
+            <Button variant="outline" size="sm" className="text-blue-400 border-blue-400 hover:bg-blue-600/20">
               Download
             </Button>
           </div>
@@ -231,9 +232,9 @@ export default function OpportunityDetailPage() {
 
         {/* Funding Breakdown */}
         <div>
-          <h3 className="font-semibold text-neutral-900 mb-3">Use of Funds</h3>
-          <div className="bg-neutral-50 rounded-xl p-4">
-            <p className="text-neutral-700 leading-relaxed">
+          <h3 className="font-semibold text-white mb-3">Use of Funds</h3>
+          <div className="bg-gray-900 rounded-xl p-4">
+            <p className="text-gray-300 leading-relaxed">
               {listing.useOfFunds}
             </p>
           </div>
@@ -242,7 +243,7 @@ export default function OpportunityDetailPage() {
         {/* Action Buttons */}
         <div className="space-y-3 pt-4">
           <Button 
-            className="w-full"
+            className="w-full bg-blue-600 hover:bg-blue-700"
             onClick={() => expressInterest.mutate()}
             disabled={expressInterest.isPending}
           >
@@ -251,29 +252,31 @@ export default function OpportunityDetailPage() {
           <div className="grid grid-cols-2 gap-3">
             <Button 
               variant="outline"
+              className="border-gray-600 text-white hover:bg-gray-800"
               onClick={() => setLocation(`/chat/${listing.entrepreneurId}`)}
             >
               Message
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-800">
               Schedule Call
             </Button>
           </div>
         </div>
 
         {/* Safety Notice */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div className="bg-amber-600/10 border border-amber-600/30 rounded-xl p-4">
           <div className="flex items-start space-x-3">
-            <Shield className="h-5 w-5 text-amber-500 mt-1 flex-shrink-0" />
+            <Shield className="h-5 w-5 text-amber-400 mt-1 flex-shrink-0" />
             <div>
-              <p className="text-sm text-amber-800 font-medium mb-1">Investment Safety</p>
-              <p className="text-sm text-amber-700">
+              <p className="text-sm text-amber-300 font-medium mb-1">Investment Safety</p>
+              <p className="text-sm text-amber-200">
                 This entrepreneur is KYC verified. Always do your due diligence before investing. InvestLocal acts as a connector only.
               </p>
             </div>
           </div>
         </div>
       </div>
+      <BottomNavigation activeTab="home" />
     </div>
   );
 }

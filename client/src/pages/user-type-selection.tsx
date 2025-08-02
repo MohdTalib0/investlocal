@@ -77,7 +77,7 @@ export default function UserTypeSelectionPage() {
       <div className="flex space-x-4">
         <Button 
           variant="outline"
-          className="flex-1"
+          className="flex-1 text-black"
           onClick={() => setLocation("/onboarding")}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />

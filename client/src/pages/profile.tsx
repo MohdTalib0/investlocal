@@ -150,11 +150,11 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50">
+      <div className="min-h-screen bg-black">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-neutral-600">Loading profile...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-400">Loading profile...</p>
           </div>
         </div>
       </div>
@@ -164,72 +164,72 @@ export default function ProfilePage() {
   const stats = calculateStats();
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-20">
+    <div className="min-h-screen bg-black pb-20">
       {/* Profile Header */}
-      <div className="bg-gradient-to-br from-primary to-blue-600 px-6 pt-12 pb-8">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-800 px-6 pt-12 pb-8">
         <div className="flex items-center justify-between mb-6">
           <Button 
             variant="ghost" 
             size="icon"
-            className="text-white"
+            className="text-white hover:bg-blue-700"
             onClick={() => setLocation("/dashboard")}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-white">
+              <Button variant="ghost" size="icon" className="text-white hover:bg-blue-700">
                 <Edit className="h-5 w-5" />
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="bg-gray-900 border-gray-700">
               <DialogHeader>
-                <DialogTitle>Edit Profile</DialogTitle>
+                <DialogTitle className="text-white">Edit Profile</DialogTitle>
               </DialogHeader>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div>
-                  <Label htmlFor="fullName">Full Name</Label>
+                  <Label htmlFor="fullName" className="text-white">Full Name</Label>
                   <Input
                     id="fullName"
                     {...form.register("fullName")}
-                    className="mt-1"
+                    className="mt-1 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                   />
                   {form.formState.errors.fullName && (
-                    <p className="text-sm text-red-500 mt-1">{form.formState.errors.fullName.message}</p>
+                    <p className="text-sm text-red-400 mt-1">{form.formState.errors.fullName.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <Label htmlFor="bio">Bio</Label>
+                  <Label htmlFor="bio" className="text-white">Bio</Label>
                   <Textarea
                     id="bio"
                     {...form.register("bio")}
-                    className="mt-1"
+                    className="mt-1 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                     rows={3}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="city">City</Label>
+                  <Label htmlFor="city" className="text-white">City</Label>
                   <Input
                     id="city"
                     {...form.register("city")}
-                    className="mt-1"
+                    className="mt-1 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                   />
                   {form.formState.errors.city && (
-                    <p className="text-sm text-red-500 mt-1">{form.formState.errors.city.message}</p>
+                    <p className="text-sm text-red-400 mt-1">{form.formState.errors.city.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <Label htmlFor="phone">Phone</Label>
+                  <Label htmlFor="phone" className="text-white">Phone</Label>
                   <Input
                     id="phone"
                     {...form.register("phone")}
-                    className="mt-1"
+                    className="mt-1 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                   />
                   {form.formState.errors.phone && (
-                    <p className="text-sm text-red-500 mt-1">{form.formState.errors.phone.message}</p>
+                    <p className="text-sm text-red-400 mt-1">{form.formState.errors.phone.message}</p>
                   )}
                 </div>
 
@@ -237,14 +237,14 @@ export default function ProfilePage() {
                   <Button 
                     type="button" 
                     variant="outline" 
-                    className="flex-1"
+                    className="flex-1 border-gray-600 text-white hover:bg-gray-800"
                     onClick={() => setIsEditModalOpen(false)}
                   >
                     Cancel
                   </Button>
                   <Button 
                     type="submit" 
-                    className="flex-1"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
                     disabled={updateProfile.isPending}
                   >
                     {updateProfile.isPending ? "Saving..." : "Save Changes"}
@@ -302,25 +302,25 @@ export default function ProfilePage() {
         
         {/* Profile Stats */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-primary">{stats.primary}</p>
-            <p className="text-xs text-neutral-600">{stats.primaryLabel}</p>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-blue-400">{stats.primary}</p>
+            <p className="text-xs text-gray-400">{stats.primaryLabel}</p>
           </div>
-          <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-secondary">{stats.secondary}</p>
-            <p className="text-xs text-neutral-600">{stats.secondaryLabel}</p>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-green-400">{stats.secondary}</p>
+            <p className="text-xs text-gray-400">{stats.secondaryLabel}</p>
           </div>
-          <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-accent">{stats.tertiary}</p>
-            <p className="text-xs text-neutral-600">{stats.tertiaryLabel}</p>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-yellow-400">{stats.tertiary}</p>
+            <p className="text-xs text-gray-400">{stats.tertiaryLabel}</p>
           </div>
         </div>
 
         {/* About Section */}
         {profile?.bio && (
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="font-semibold text-neutral-900 mb-3">About</h3>
-            <p className="text-neutral-700 text-sm leading-relaxed">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
+            <h3 className="font-semibold text-white mb-3">About</h3>
+            <p className="text-gray-300 text-sm leading-relaxed">
               {profile.bio}
             </p>
           </div>
@@ -328,27 +328,27 @@ export default function ProfilePage() {
 
         {/* Investment Preferences for Investors */}
         {user?.userType === 'investor' && (
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="font-semibold text-neutral-900 mb-3">Investment Preferences</h3>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
+            <h3 className="font-semibold text-white mb-3">Investment Preferences</h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-neutral-700">Investment Range</span>
-                <span className="font-medium text-neutral-900">₹1L - ₹10L</span>
+                <span className="text-gray-400">Investment Range</span>
+                <span className="font-medium text-white">₹1L - ₹10L</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-neutral-700">Preferred Sectors</span>
+                <span className="text-gray-400">Preferred Sectors</span>
                 <div className="flex space-x-1">
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
+                  <Badge variant="secondary" className="bg-blue-600/20 text-blue-400 text-xs border-blue-600/30">
                     Tech
                   </Badge>
-                  <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                  <Badge variant="secondary" className="bg-green-600/20 text-green-400 text-xs border-green-600/30">
                     Food
                   </Badge>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-neutral-700">Risk Appetite</span>
-                <span className="font-medium text-neutral-900">Moderate</span>
+                <span className="text-gray-400">Risk Appetite</span>
+                <span className="font-medium text-white">Moderate</span>
               </div>
             </div>
           </div>
@@ -359,80 +359,80 @@ export default function ProfilePage() {
           
           <Button 
             variant="outline"
-            className="w-full justify-between h-auto p-4"
+            className="w-full justify-between h-auto p-4 border-gray-700 hover:bg-gray-800 bg-gray-800"
             onClick={() => setLocation("/dashboard")}
           >
             <div className="flex items-center space-x-3">
-              <List className="h-5 w-5 text-neutral-600" />
-              <span className="text-neutral-900">
+              <List className="h-5 w-5 text-gray-400" />
+              <span className="text-white">
                 {user?.userType === 'entrepreneur' ? 'My Listings' : 'My Interests'}
               </span>
             </div>
-            <span className="text-neutral-400">→</span>
+            <span className="text-gray-400">→</span>
           </Button>
 
           <Button 
             variant="outline"
-            className="w-full justify-between h-auto p-4"
+            className="w-full justify-between h-auto p-4 border-gray-700 hover:bg-gray-800 bg-gray-800"
           >
             <div className="flex items-center space-x-3">
-              <PieChart className="h-5 w-5 text-neutral-600" />
-              <span className="text-neutral-900">
+              <PieChart className="h-5 w-5 text-gray-400" />
+              <span className="text-white">
                 {user?.userType === 'entrepreneur' ? 'Analytics' : 'Investment Portfolio'}
               </span>
             </div>
-            <span className="text-neutral-400">→</span>
+            <span className="text-gray-400">→</span>
           </Button>
 
           <Button 
             variant="outline"
-            className="w-full justify-between h-auto p-4"
+            className="w-full justify-between h-auto p-4 border-gray-700 hover:bg-gray-800 bg-gray-800"
           >
             <div className="flex items-center space-x-3">
-              <Bookmark className="h-5 w-5 text-neutral-600" />
-              <span className="text-neutral-900">Saved Opportunities</span>
+              <Bookmark className="h-5 w-5 text-gray-400" />
+              <span className="text-white">Saved Opportunities</span>
             </div>
-            <span className="text-neutral-400">→</span>
+            <span className="text-gray-400">→</span>
           </Button>
 
           <Button 
             variant="outline"
-            className="w-full justify-between h-auto p-4"
+            className="w-full justify-between h-auto p-4 border-gray-700 hover:bg-gray-800 bg-gray-800"
           >
             <div className="flex items-center space-x-3">
-              <Settings className="h-5 w-5 text-neutral-600" />
-              <span className="text-neutral-900">Settings & Privacy</span>
+              <Settings className="h-5 w-5 text-gray-400" />
+              <span className="text-white">Settings & Privacy</span>
             </div>
-            <span className="text-neutral-400">→</span>
+            <span className="text-gray-400">→</span>
           </Button>
 
           <Button 
             variant="outline"
-            className="w-full justify-between h-auto p-4"
+            className="w-full justify-between h-auto p-4 border-gray-700 hover: bg-gray-800"
           >
             <div className="flex items-center space-x-3">
-              <HelpCircle className="h-5 w-5 text-neutral-600" />
-              <span className="text-neutral-900">Help & Support</span>
+              <HelpCircle className="h-5 w-5 text-gray-400" />
+              <span className="text-white">Help & Support</span>
             </div>
-            <span className="text-neutral-400">→</span>
+            <span className="text-gray-400">→</span>
           </Button>
 
           <Button 
             variant="outline"
-            className="w-full justify-between h-auto p-4 border-red-200 hover:bg-red-50"
+            className="w-full justify-between h-auto p-4 border-red-800 hover:bg-red-900/20"
             onClick={handleLogout}
           >
             <div className="flex items-center space-x-3">
-              <LogOut className="h-5 w-5 text-red-500" />
-              <span className="text-red-500">Logout</span>
+              <LogOut className="h-5 w-5 text-red-400" />
+              <span className="text-red-400">Logout</span>
             </div>
           </Button>
         </div>
 
         {/* App Info */}
         <div className="text-center pt-4">
-          <p className="text-neutral-500 text-sm">InvestLocal v1.0.0</p>
-          <p className="text-neutral-400 text-xs mt-1">Made with ❤️ for local entrepreneurs</p>
+          <p className="text-gray-400 text-sm">InvestLocal v1.0.0</p>
+          <p className="text-gray-500 text-xs mt-1">Made with ❤️ for local entrepreneurs</p>
         </div>
       </div>
 

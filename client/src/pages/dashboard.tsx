@@ -63,11 +63,11 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50">
+      <div className="min-h-screen bg-black">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-neutral-600">Loading opportunities...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-400">Loading opportunities...</p>
           </div>
         </div>
       </div>
@@ -75,19 +75,19 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-20">
-      {/* Top Navigation */}
-      <div className="bg-white border-b border-gray-100 px-6 pt-12 pb-4">
+    <div className="min-h-screen bg-black pb-20">
+              {/* Top Navigation */}
+        <div className="bg-gray-900 border-b border-gray-800 px-6 pt-12 pb-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-neutral-900">
+            <h1 className="text-xl font-bold text-white">
               Welcome, {user?.fullName || "User"}
             </h1>
-            <p className="text-sm text-neutral-500">{user?.city}, UP</p>
+            <p className="text-sm text-gray-400">{user?.city}, UP</p>
           </div>
           <div className="flex items-center space-x-3">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5 text-neutral-600" />
+            <Button variant="ghost" size="icon" className="relative text-white hover:bg-gray-800">
+              <Bell className="h-5 w-5 text-gray-400" />
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                 3
               </span>

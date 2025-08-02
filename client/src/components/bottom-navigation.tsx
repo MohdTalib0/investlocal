@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Home, Search, Plus, MessageCircle, User } from "lucide-react";
+import { Home, Plus, MessageCircle, User } from "lucide-react";
 import { authService } from "@/lib/auth";
 
 interface BottomNavigationProps {
@@ -16,12 +16,10 @@ export default function BottomNavigation({ activeTab }: BottomNavigationProps) {
       case "home":
         setLocation("/dashboard");
         break;
-      case "search":
-        setLocation("/dashboard"); // For now, same as home with search functionality
-        break;
+
       case "add":
         if (user?.userType === 'entrepreneur') {
-          setLocation("/create-listing");
+          setLocation("/create-post");
         } else {
           // Investors can't post, maybe show a message or redirect to search
           setLocation("/dashboard");
@@ -37,14 +35,14 @@ export default function BottomNavigation({ activeTab }: BottomNavigationProps) {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+    <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800">
       <div className="max-w-md mx-auto px-6 py-2">
-        <div className="flex justify-around">
+        <div className="flex justify-around space-x-2">
           <Button
             variant="ghost"
             size="sm"
             className={`flex flex-col items-center py-2 ${
-              activeTab === "home" ? "text-primary" : "text-neutral-400"
+              activeTab === "home" ? "text-blue-400" : "text-gray-400"
             }`}
             onClick={() => handleTabClick("home")}
           >
@@ -52,23 +50,13 @@ export default function BottomNavigation({ activeTab }: BottomNavigationProps) {
             <span className="text-xs">Home</span>
           </Button>
           
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`flex flex-col items-center py-2 ${
-              activeTab === "search" ? "text-primary" : "text-neutral-400"
-            }`}
-            onClick={() => handleTabClick("search")}
-          >
-            <Search className="h-5 w-5 mb-1" />
-            <span className="text-xs">Search</span>
-          </Button>
+
           
           <Button
             variant="ghost"
             size="sm"
             className={`flex flex-col items-center py-2 ${
-              activeTab === "add" ? "text-primary" : "text-neutral-400"
+              activeTab === "add" ? "text-blue-400" : "text-gray-400"
             }`}
             onClick={() => handleTabClick("add")}
           >
@@ -80,7 +68,7 @@ export default function BottomNavigation({ activeTab }: BottomNavigationProps) {
             variant="ghost"
             size="sm"
             className={`flex flex-col items-center py-2 ${
-              activeTab === "chat" ? "text-primary" : "text-neutral-400"
+              activeTab === "chat" ? "text-blue-400" : "text-gray-400"
             }`}
             onClick={() => handleTabClick("chat")}
           >
@@ -92,7 +80,7 @@ export default function BottomNavigation({ activeTab }: BottomNavigationProps) {
             variant="ghost"
             size="sm"
             className={`flex flex-col items-center py-2 ${
-              activeTab === "profile" ? "text-primary" : "text-neutral-400"
+              activeTab === "profile" ? "text-blue-400" : "text-gray-400"
             }`}
             onClick={() => handleTabClick("profile")}
           >

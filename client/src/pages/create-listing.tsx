@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Camera, Plus, FileText, Info } from "lucide-react";
+import { ArrowLeft, Camera, Plus, FileText, Info, CheckCircle } from "lucide-react";
 import { authenticatedApiRequest } from "@/lib/auth";
+import BottomNavigation from "@/components/bottom-navigation";
 
 const createListingSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
@@ -56,8 +57,8 @@ export default function CreateListingPage() {
     },
     onSuccess: () => {
       toast({
-        title: "Listing submitted!",
-        description: "Your business listing has been submitted for review.",
+        title: "Listing published!",
+        description: "Your business listing is now live and visible to all investors.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/listings"] });
       setLocation("/dashboard");
@@ -88,21 +89,21 @@ export default function CreateListingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-20">
+    <div className="min-h-screen bg-black pb-20">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-6 pt-12 pb-4">
+      <div className="bg-gray-900 border-b border-gray-800 px-6 pt-12 pb-4">
         <div className="flex items-center mb-4">
           <Button 
             variant="ghost" 
             size="icon"
-            className="mr-4"
+            className="mr-4 text-white hover:bg-gray-800"
             onClick={() => setLocation("/dashboard")}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h2 className="text-xl font-bold text-neutral-900">Create Business Listing</h2>
-            <p className="text-sm text-neutral-500">Share your opportunity with investors</p>
+            <h2 className="text-xl font-bold text-white">Create Business Listing</h2>
+            <p className="text-sm text-gray-400">Share your opportunity with investors</p>
           </div>
         </div>
       </div>
@@ -112,15 +113,15 @@ export default function CreateListingPage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* Business Photos */}
           <div>
-            <Label className="block text-sm font-medium text-neutral-700 mb-3">Business Photos</Label>
+            <Label className="block text-sm font-medium text-white mb-3">Business Photos</Label>
             <div className="grid grid-cols-2 gap-4">
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
-                <Camera className="h-8 w-8 text-neutral-400 mx-auto mb-2" />
-                <p className="text-sm text-neutral-600">Add Photo</p>
+              <div className="border-2 border-dashed border-gray-600 rounded-xl p-6 text-center bg-gray-800">
+                <Camera className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">Add Photo</p>
               </div>
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
-                <Plus className="h-8 w-8 text-neutral-400 mx-auto mb-2" />
-                <p className="text-sm text-neutral-600">Add More</p>
+              <div className="border-2 border-dashed border-gray-600 rounded-xl p-6 text-center bg-gray-800">
+                <Plus className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">Add More</p>
               </div>
             </div>
           </div>
@@ -174,8 +175,8 @@ export default function CreateListingPage() {
           </div>
 
           {/* Funding Details */}
-          <div className="bg-neutral-50 rounded-xl p-4">
-            <h3 className="font-semibold text-neutral-900 mb-4">Funding Requirements</h3>
+          <div className="bg-gray-800 rounded-xl p-4">
+            <h3 className="font-semibold text-white mb-4">Funding Requirements</h3>
             
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
@@ -255,19 +256,19 @@ export default function CreateListingPage() {
 
           {/* Business Plan Upload */}
           <div>
-            <Label className="block text-sm font-medium text-neutral-700 mb-2">Business Plan (Optional)</Label>
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
-              <FileText className="h-8 w-8 text-neutral-400 mx-auto mb-2" />
-              <p className="text-sm text-neutral-600 mb-2">Upload your business plan</p>
-              <Button type="button" variant="outline" size="sm">
+            <Label className="block text-sm font-medium text-white mb-2">Business Plan (Optional)</Label>
+            <div className="border-2 border-dashed border-gray-600 rounded-xl p-6 text-center bg-gray-800">
+              <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-400 mb-2">Upload your business plan</p>
+              <Button type="button" variant="outline" size="sm" className="border-gray-600 text-white hover:bg-gray-700">
                 Choose File
               </Button>
             </div>
           </div>
 
           {/* Contact Preferences */}
-          <div className="bg-neutral-50 rounded-xl p-4">
-            <h3 className="font-semibold text-neutral-900 mb-4">Contact Preferences</h3>
+          <div className="bg-gray-800 rounded-xl p-4">
+            <h3 className="font-semibold text-white mb-4">Contact Preferences</h3>
             
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
@@ -276,7 +277,7 @@ export default function CreateListingPage() {
                   checked={form.watch("allowDirectMessages")}
                   onCheckedChange={(checked) => form.setValue("allowDirectMessages", !!checked)}
                 />
-                <Label htmlFor="allowDirectMessages" className="text-sm text-neutral-700">
+                <Label htmlFor="allowDirectMessages" className="text-sm text-gray-300">
                   Allow direct messages from verified investors
                 </Label>
               </div>
@@ -286,7 +287,7 @@ export default function CreateListingPage() {
                   checked={form.watch("sharePhoneNumber")}
                   onCheckedChange={(checked) => form.setValue("sharePhoneNumber", !!checked)}
                 />
-                <Label htmlFor="sharePhoneNumber" className="text-sm text-neutral-700">
+                <Label htmlFor="sharePhoneNumber" className="text-sm text-gray-300">
                   Share phone number with interested investors
                 </Label>
               </div>
@@ -296,7 +297,7 @@ export default function CreateListingPage() {
                   checked={form.watch("emailUpdates")}
                   onCheckedChange={(checked) => form.setValue("emailUpdates", !!checked)}
                 />
-                <Label htmlFor="emailUpdates" className="text-sm text-neutral-700">
+                <Label htmlFor="emailUpdates" className="text-sm text-gray-300">
                   Send me investment updates via email
                 </Label>
               </div>
@@ -310,7 +311,7 @@ export default function CreateListingPage() {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? "Submitting..." : "Submit for Review"}
+              {isLoading ? "Publishing..." : "Publish Listing"}
             </Button>
             <Button 
               type="button"
@@ -322,19 +323,20 @@ export default function CreateListingPage() {
             </Button>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
             <div className="flex items-start space-x-3">
-              <Info className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
+              <CheckCircle className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-sm text-blue-800 font-medium mb-1">Review Process</p>
-                <p className="text-sm text-blue-700">
-                  Your listing will be reviewed within 24-48 hours. We'll notify you once it's approved and live.
+                <p className="text-sm text-green-800 font-medium mb-1">Instant Publishing</p>
+                <p className="text-sm text-green-700">
+                  Your listing will be published immediately and visible to all investors.
                 </p>
               </div>
             </div>
           </div>
         </form>
       </div>
+      <BottomNavigation activeTab="add" />
     </div>
   );
 }

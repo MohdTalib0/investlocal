@@ -3,7 +3,9 @@ import { createServer, type Server } from "http";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
-import { insertUserSchema, insertBusinessListingSchema, insertPostSchema, insertMessageSchema, insertRatingSchema, insertInterestSchema, insertReportSchema } from "@shared/schema";
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { insertUserSchema, insertBusinessListingSchema, insertPostSchema, insertMessageSchema, insertRatingSchema, insertInterestSchema, insertReportSchema, insertCommentSchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -152,6 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const listingData = insertBusinessListingSchema.parse({
         ...req.body,
         entrepreneurId: req.user.userId,
+        status: "approved", // Auto-approve all listings
       });
       
       const listing = await storage.createBusinessListing(listingData);
@@ -257,16 +260,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Post routes (unified investment & community posts)
   app.post("/api/posts", authenticateToken, async (req: any, res) => {
     try {
+      console.log('API: Creating post with data:', req.body);
       const postData = insertPostSchema.parse({
         ...req.body,
         authorId: req.user.userId,
+        status: "approved", // Auto-approve all posts
       });
       
+      console.log('API: Parsed post data:', postData);
       const post = await storage.createPost(postData);
+      console.log('API: Created post:', post);
       res.json(post);
     } catch (error) {
       console.error("Create post error:", error);
       res.status(400).json({ message: "Failed to create post" });
+    }
+  });
+
+  // Debug route to check users
+  app.get("/api/debug/users", async (req, res) => {
+    try {
+      const allUsers = await db.select().from(users);
+      console.log('All users in database:', allUsers);
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Debug users error:", error);
+      res.status(500).json({ message: "Failed to get users" });
     }
   });
 
@@ -282,8 +301,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: req.query.status as string,
       };
       
+      console.log('API: Getting posts with filters:', filters);
       const posts = await storage.getPosts(filters);
-      res.json(posts);
+      
+      // Get user data for each post
+      const postsWithUsers = await Promise.all(
+        posts.map(async (post) => {
+          const author = await storage.getUser(post.authorId);
+          console.log(`Post ${post.id} - Author ID: ${post.authorId}, Author Data:`, author);
+          console.log(`Author fullName:`, author?.fullName);
+          console.log(`Author keys:`, author ? Object.keys(author) : 'No author');
+          return {
+            ...post,
+            author: author ? {
+              id: author.id,
+              fullName: author.fullName,
+              email: author.email,
+              userType: author.userType,
+              avatar: author.avatar,
+            } : null
+          };
+        })
+      );
+      
+      console.log('API: Found posts:', postsWithUsers.length);
+      res.json(postsWithUsers);
     } catch (error) {
       console.error("Get posts error:", error);
       res.status(500).json({ message: "Failed to get posts" });
@@ -385,11 +427,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/posts/:id/likes", async (req, res) => {
     try {
-      const likes = await storage.getPostLikes(req.params.id);
+      const likes = await storage.getPostLikesWithUsers(req.params.id);
       res.json(likes);
     } catch (error) {
       console.error("Get post likes error:", error);
       res.status(500).json({ message: "Failed to get post likes" });
+    }
+  });
+
+  // Comment routes
+  app.post("/api/posts/:id/comments", authenticateToken, async (req: any, res) => {
+    try {
+      const commentData = insertCommentSchema.parse({
+        ...req.body,
+        userId: req.user.userId,
+        postId: req.params.id,
+      });
+      
+      const comment = await storage.createComment(commentData);
+      res.json(comment);
+    } catch (error) {
+      console.error("Create comment error:", error);
+      res.status(400).json({ message: "Failed to create comment" });
+    }
+  });
+
+  app.get("/api/posts/:id/comments", async (req, res) => {
+    try {
+      const comments = await storage.getPostCommentsWithUsers(req.params.id);
+      res.json(comments);
+    } catch (error) {
+      console.error("Get post comments error:", error);
+      res.status(500).json({ message: "Failed to get post comments" });
+    }
+  });
+
+  app.delete("/api/comments/:id", authenticateToken, async (req: any, res) => {
+    try {
+      await storage.deleteComment(req.params.id);
+      res.json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      console.error("Delete comment error:", error);
+      res.status(500).json({ message: "Failed to delete comment" });
     }
   });
 

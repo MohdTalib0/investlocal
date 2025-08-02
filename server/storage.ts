@@ -3,6 +3,7 @@ import {
   businessListings, 
   posts,
   postLikes,
+  comments,
   messages, 
   ratings, 
   interests, 
@@ -15,6 +16,8 @@ import {
   type InsertPost,
   type PostLike,
   type InsertPostLike,
+  type Comment,
+  type InsertComment,
   type Message,
   type InsertMessage,
   type Rating,
@@ -52,6 +55,11 @@ export interface IStorage {
   likePost(userId: string, postId: string): Promise<void>;
   unlikePost(userId: string, postId: string): Promise<void>;
   getPostLikes(postId: string): Promise<PostLike[]>;
+  
+  // Comment methods
+  createComment(comment: InsertComment): Promise<Comment>;
+  getPostComments(postId: string): Promise<Comment[]>;
+  deleteComment(id: string): Promise<void>;
   
   // Business listing methods (kept for backward compatibility)
   createBusinessListing(listing: InsertBusinessListing): Promise<BusinessListing>;
@@ -103,8 +111,18 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      console.log(`Getting user ${id}:`, user);
+      if (user) {
+        console.log(`User ${id} keys:`, Object.keys(user));
+        console.log(`User ${id} fullName:`, user.fullName);
+      }
+      return user || undefined;
+    } catch (error) {
+      console.error(`Error getting user ${id}:`, error);
+      return undefined;
+    }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -217,6 +235,93 @@ export class DatabaseStorage implements IStorage {
 
   async getPostLikes(postId: string): Promise<PostLike[]> {
     return await db.select().from(postLikes).where(eq(postLikes.postId, postId));
+  }
+
+  async getPostLikesWithUsers(postId: string): Promise<(PostLike & { user: User })[]> {
+    const likes = await db
+      .select({
+        id: postLikes.id,
+        userId: postLikes.userId,
+        postId: postLikes.postId,
+        createdAt: postLikes.createdAt,
+        user: {
+          id: users.id,
+          fullName: users.fullName,
+          email: users.email,
+          userType: users.userType,
+          avatar: users.avatar,
+        }
+      })
+      .from(postLikes)
+      .innerJoin(users, eq(postLikes.userId, users.id))
+      .where(eq(postLikes.postId, postId));
+    
+    return likes;
+  }
+
+  // Comment methods
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const [newComment] = await db.insert(comments).values(comment).returning();
+    return newComment;
+  }
+
+  async getPostComments(postId: string): Promise<Comment[]> {
+    return await db.select().from(comments).where(eq(comments.postId, postId)).orderBy(desc(comments.createdAt));
+  }
+
+  async getPostCommentsWithUsers(postId: string): Promise<any[]> {
+    try {
+      console.log(`Getting comments for post ${postId}`);
+      
+      // First, let's check if there are any comments for this post
+      const basicComments = await db.select().from(comments).where(eq(comments.postId, postId));
+      console.log(`Found ${basicComments.length} basic comments for post ${postId}`);
+      
+      if (basicComments.length === 0) {
+        return [];
+      }
+      
+      const commentsWithUsers = await db
+        .select({
+          id: comments.id,
+          userId: comments.userId,
+          postId: comments.postId,
+          content: comments.content,
+          parentId: comments.parentId,
+          createdAt: comments.createdAt,
+          user: {
+            id: users.id,
+            fullName: users.fullName,
+            email: users.email,
+            userType: users.userType,
+            avatar: users.avatar,
+          }
+        })
+        .from(comments)
+        .innerJoin(users, eq(comments.userId, users.id))
+        .where(eq(comments.postId, postId))
+        .orderBy(desc(comments.createdAt));
+      
+      console.log(`Returning ${commentsWithUsers.length} comments with users for post ${postId}`);
+      return commentsWithUsers;
+    } catch (error) {
+      console.error(`Error getting comments with users for post ${postId}:`, error);
+      // Fallback to basic comments without user data
+      try {
+        const basicComments = await db.select().from(comments).where(eq(comments.postId, postId));
+        return basicComments.map(comment => ({
+          ...comment,
+          user: null
+        }));
+      } catch (fallbackError) {
+        console.error(`Fallback error for post ${postId}:`, fallbackError);
+        return [];
+      }
+    }
+  }
+
+  async deleteComment(id: string): Promise<void> {
+    await db.delete(comments).where(eq(comments.id, id));
   }
 
   async createBusinessListing(listing: InsertBusinessListing): Promise<BusinessListing> {

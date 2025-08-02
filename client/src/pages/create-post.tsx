@@ -16,6 +16,7 @@ import { ArrowLeft, DollarSign, MessageSquare, Upload, X } from "lucide-react";
 import { authenticatedApiRequest } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { insertPostSchema } from "@shared/schema";
+import BottomNavigation from "@/components/bottom-navigation";
 
 const postSchema = insertPostSchema.extend({
   images: z.array(z.string()).optional().default([]),
@@ -74,7 +75,7 @@ export default function CreatePost() {
       console.log('Post created successfully:', data);
       toast({
         title: "Success",
-        description: `${postType === 'investment' ? 'Investment opportunity' : 'Community post'} created successfully! It will be reviewed by admins.`,
+        description: `${postType === 'investment' ? 'Investment opportunity' : 'Community post'} created successfully! It's now live and visible to everyone.`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       setLocation("/dashboard");
@@ -134,37 +135,38 @@ export default function CreatePost() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-black pb-20">
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         <div className="flex items-center gap-4 mb-6">
           <Button 
             variant="ghost" 
             size="icon"
             onClick={() => setLocation("/dashboard")}
+            className="text-white hover:bg-gray-800"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Create New Post</h1>
-            <p className="text-gray-600 dark:text-gray-400">Share an investment opportunity or community post</p>
+            <h1 className="text-2xl font-bold text-white">Create New Post</h1>
+            <p className="text-gray-400">Share an investment opportunity or community post</p>
           </div>
         </div>
 
-        <Card>
+        <Card className="bg-gray-900 border-gray-700">
           <CardHeader>
-            <CardTitle>Post Type</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-white">Post Type</CardTitle>
+            <CardDescription className="text-gray-400">
               Choose the type of post you want to create
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs value={postType} onValueChange={(value) => setPostType(value as 'investment' | 'community')}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="investment" className="flex items-center gap-2">
+              <TabsList className="grid w-full grid-cols-2 bg-gray-800 border-gray-600">
+                <TabsTrigger value="investment" className="flex items-center gap-2 text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                   <DollarSign className="h-4 w-4" />
                   Investment Opportunity
                 </TabsTrigger>
-                <TabsTrigger value="community" className="flex items-center gap-2">
+                <TabsTrigger value="community" className="flex items-center gap-2 text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                   <MessageSquare className="h-4 w-4" />
                   Community Post
                 </TabsTrigger>
@@ -184,37 +186,42 @@ export default function CreatePost() {
                     onSubmit(formData);
                   }} className="space-y-6">
                     {/* Common fields */}
-                    <FormField
-                      control={form.control}
-                      name="title"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Title *</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder={postType === 'investment' 
-                                ? "e.g., Seeking ₹5L for Tech Startup in Lucknow" 
-                                : "e.g., Looking for business advice"} 
-                              {...field} 
+                    {/* Title field - only show for investment posts */}
+                    {postType === 'investment' && (
+                      <FormField
+                        control={form.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Title *</FormLabel>
+                            <FormControl>
+                                                          <Input 
+                              placeholder="e.g., Seeking ₹5L for Tech Startup in Lucknow"
+                              className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+                              {...field}
+                              value={field.value || ""}
                             />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
 
                     <FormField
                       control={form.control}
                       name="content"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Description *</FormLabel>
+                          <FormLabel className="text-white">
+                            {postType === 'investment' ? 'Description *' : 'What\'s on your mind? *'}
+                          </FormLabel>
                           <FormControl>
                             <Textarea
                               placeholder={postType === 'investment' 
                                 ? "Describe your business idea, market opportunity, and why investors should be interested..."
                                 : "Share your thoughts, ask questions, or start a discussion..."}
-                              className="min-h-[120px]"
+                              className="min-h-[120px] bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                               {...field}
                             />
                           </FormControl>
@@ -228,16 +235,16 @@ export default function CreatePost() {
                       name="category"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Category</FormLabel>
+                          <FormLabel className="text-white">Category</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
                                 <SelectValue placeholder="Select a category" />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
+                            <SelectContent className="bg-gray-800 border-gray-600">
                               {categories.map((category) => (
-                                <SelectItem key={category} value={category}>
+                                <SelectItem key={category} value={category} className="text-white hover:bg-gray-700">
                                   {category}
                                 </SelectItem>
                               ))}
@@ -256,11 +263,12 @@ export default function CreatePost() {
                           name="fundingMin"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Minimum Funding (₹)</FormLabel>
+                              <FormLabel className="text-white">Minimum Funding (₹)</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
                                   placeholder="50000"
+                                  className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                                   {...field}
                                   value={field.value || ""}
                                   onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
@@ -276,11 +284,12 @@ export default function CreatePost() {
                           name="fundingMax"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Maximum Funding (₹)</FormLabel>
+                              <FormLabel className="text-white">Maximum Funding (₹)</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
                                   placeholder="500000"
+                                  className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                                   {...field}
                                   value={field.value || ""}
                                   onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
@@ -297,10 +306,11 @@ export default function CreatePost() {
                         name="useOfFunds"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Use of Funds</FormLabel>
+                            <FormLabel className="text-white">Use of Funds</FormLabel>
                             <FormControl>
                               <Textarea
                                 placeholder="How will you use the investment? e.g., Product development, Marketing, Inventory..."
+                                className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                                 {...field}
                                 value={field.value || ""}
                               />
@@ -316,9 +326,9 @@ export default function CreatePost() {
                           name="timeline"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Timeline</FormLabel>
+                              <FormLabel className="text-white">Timeline</FormLabel>
                               <FormControl>
-                                <Input placeholder="e.g., 6 months" {...field} value={field.value || ""} />
+                                <Input placeholder="e.g., 6 months" className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400" {...field} value={field.value || ""} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -330,9 +340,9 @@ export default function CreatePost() {
                           name="expectedRoi"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Expected ROI</FormLabel>
+                              <FormLabel className="text-white">Expected ROI</FormLabel>
                               <FormControl>
-                                <Input placeholder="e.g., 15-20%" {...field} value={field.value || ""} />
+                                <Input placeholder="e.g., 15-20%" className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400" {...field} value={field.value || ""} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -344,11 +354,12 @@ export default function CreatePost() {
                           name="teamSize"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Team Size</FormLabel>
+                              <FormLabel className="text-white">Team Size</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
                                   placeholder="3"
+                                  className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                                   {...field}
                                   value={field.value || ""}
                                   onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
@@ -365,10 +376,11 @@ export default function CreatePost() {
                         name="businessPlan"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Business Plan (URL)</FormLabel>
+                            <FormLabel className="text-white">Business Plan (URL)</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="https://..."
+                                className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                                 {...field}
                                 value={field.value || ""}
                               />
@@ -381,11 +393,11 @@ export default function CreatePost() {
 
                     {/* Image upload */}
                     <div className="space-y-4">
-                      <Label>Images</Label>
-                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
+                      <Label className="text-white">Images</Label>
+                      <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 bg-gray-800">
                         <div className="text-center">
                           <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          <div className="text-sm text-gray-400 mb-2">
                             Upload images to showcase your {postType === 'investment' ? 'business' : 'post'}
                           </div>
                           <Input
@@ -393,7 +405,7 @@ export default function CreatePost() {
                             multiple
                             accept="image/*"
                             onChange={handleImageUpload}
-                            className="max-w-xs"
+                            className="max-w-xs bg-gray-700 border-gray-600 text-white"
                           />
                         </div>
                       </div>
@@ -402,8 +414,8 @@ export default function CreatePost() {
                         <div className="grid grid-cols-3 gap-4">
                           {uploadedImages.map((image, index) => (
                             <div key={index} className="relative">
-                              <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                                <span className="text-xs text-gray-500">Image {index + 1}</span>
+                              <div className="w-full h-24 bg-gray-700 rounded-lg flex items-center justify-center">
+                                <span className="text-xs text-gray-400">Image {index + 1}</span>
                               </div>
                               <Button
                                 type="button"
@@ -420,11 +432,12 @@ export default function CreatePost() {
                       )}
                     </div>
 
-                    <div className="flex justify-end gap-4 pt-6 border-t">
+                    <div className="flex justify-end gap-4 pt-6 border-t border-gray-700">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setLocation("/dashboard")}
+                        className="border-gray-600 text-black hover:bg-gray-800"
                       >
                         Cancel
                       </Button>
@@ -432,6 +445,7 @@ export default function CreatePost() {
                         type="submit" 
                         disabled={createPost.isPending}
                         onClick={() => console.log('Submit button clicked')}
+                        className="bg-blue-600 hover:bg-blue-700"
                       >
                         {createPost.isPending 
                           ? "Creating..." 
@@ -446,6 +460,7 @@ export default function CreatePost() {
           </CardContent>
         </Card>
       </div>
+      <BottomNavigation activeTab="add" />
     </div>
   );
 }
