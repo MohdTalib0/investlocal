@@ -1,19 +1,31 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 export default defineConfig({
   plugins: [
     react(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
+    // Only include Replit plugins in development and when running on Replit
+    ...(process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined
       ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-        ]
+          // Dynamically import to avoid issues in production
+          (async () => {
+            try {
+              const runtimeErrorOverlay = await import("@replit/vite-plugin-runtime-error-modal");
+              return runtimeErrorOverlay.default();
+            } catch {
+              return null;
+            }
+          })(),
+          (async () => {
+            try {
+              const cartographer = await import("@replit/vite-plugin-cartographer");
+              return cartographer.cartographer();
+            } catch {
+              return null;
+            }
+          })(),
+        ].filter(Boolean)
       : []),
   ],
   resolve: {
