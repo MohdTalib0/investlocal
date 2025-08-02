@@ -128,49 +128,49 @@ export default function CreateListingPage() {
 
           {/* Business Details */}
           <div>
-            <Label htmlFor="title">Business Title</Label>
+            <Label htmlFor="title" className="text-white">Business Title</Label>
             <Input
               id="title"
               placeholder="e.g., Cloud Kitchen Franchise"
               {...form.register("title")}
-              className="mt-2"
+              className="mt-2 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
             />
             {form.formState.errors.title && (
-              <p className="text-sm text-red-500 mt-1">{form.formState.errors.title.message}</p>
+              <p className="text-sm text-red-400 mt-1">{form.formState.errors.title.message}</p>
             )}
           </div>
 
           <div>
-            <Label htmlFor="category">Category</Label>
+            <Label htmlFor="category" className="text-white">Category</Label>
             <Select onValueChange={(value) => form.setValue("category", value)}>
-              <SelectTrigger className="mt-2">
+              <SelectTrigger className="mt-2 bg-gray-800 border-gray-600 text-white">
                 <SelectValue placeholder="Select business category" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Food & Beverage">Food & Beverage</SelectItem>
-                <SelectItem value="Tech Startups">Technology</SelectItem>
-                <SelectItem value="Retail">Retail</SelectItem>
-                <SelectItem value="Education">Education</SelectItem>
-                <SelectItem value="Healthcare">Healthcare</SelectItem>
-                <SelectItem value="Manufacturing">Manufacturing</SelectItem>
+              <SelectContent className="bg-gray-800 border-gray-600">
+                <SelectItem value="Food & Beverage" className="text-white hover:bg-gray-700">Food & Beverage</SelectItem>
+                <SelectItem value="Tech Startups" className="text-white hover:bg-gray-700">Technology</SelectItem>
+                <SelectItem value="Retail" className="text-white hover:bg-gray-700">Retail</SelectItem>
+                <SelectItem value="Education" className="text-white hover:bg-gray-700">Education</SelectItem>
+                <SelectItem value="Healthcare" className="text-white hover:bg-gray-700">Healthcare</SelectItem>
+                <SelectItem value="Manufacturing" className="text-white hover:bg-gray-700">Manufacturing</SelectItem>
               </SelectContent>
             </Select>
             {form.formState.errors.category && (
-              <p className="text-sm text-red-500 mt-1">{form.formState.errors.category.message}</p>
+              <p className="text-sm text-red-400 mt-1">{form.formState.errors.category.message}</p>
             )}
           </div>
 
           <div>
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description" className="text-white">Description</Label>
             <Textarea
               id="description"
               rows={4}
               placeholder="Describe your business opportunity, market potential, and why investors should be interested..."
               {...form.register("description")}
-              className="mt-2"
+              className="mt-2 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
             />
             {form.formState.errors.description && (
-              <p className="text-sm text-red-500 mt-1">{form.formState.errors.description.message}</p>
+              <p className="text-sm text-red-400 mt-1">{form.formState.errors.description.message}</p>
             )}
           </div>
 
@@ -180,76 +180,76 @@ export default function CreateListingPage() {
             
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <Label htmlFor="fundingMin">Min Amount (₹)</Label>
+                <Label htmlFor="fundingMin" className="text-white">Min Amount (₹)</Label>
                 <Input
                   id="fundingMin"
                   type="number"
                   placeholder="100000"
                   {...form.register("fundingMin", { valueAsNumber: true })}
-                  className="mt-2"
+                  className="mt-2 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                 />
                 {form.formState.errors.fundingMin && (
-                  <p className="text-sm text-red-500 mt-1">{form.formState.errors.fundingMin.message}</p>
+                  <p className="text-sm text-red-400 mt-1">{form.formState.errors.fundingMin.message}</p>
                 )}
               </div>
               <div>
-                <Label htmlFor="fundingMax">Max Amount (₹)</Label>
+                <Label htmlFor="fundingMax" className="text-white">Max Amount (₹)</Label>
                 <Input
                   id="fundingMax"
                   type="number"
                   placeholder="500000"
                   {...form.register("fundingMax", { valueAsNumber: true })}
-                  className="mt-2"
+                  className="mt-2 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                 />
                 {form.formState.errors.fundingMax && (
-                  <p className="text-sm text-red-500 mt-1">{form.formState.errors.fundingMax.message}</p>
+                  <p className="text-sm text-red-400 mt-1">{form.formState.errors.fundingMax.message}</p>
                 )}
               </div>
             </div>
 
             <div>
-              <Label htmlFor="useOfFunds">Use of Funds</Label>
+              <Label htmlFor="useOfFunds" className="text-white">Use of Funds</Label>
               <Textarea
                 id="useOfFunds"
                 rows={3}
                 placeholder="Explain how you plan to use the investment funds..."
                 {...form.register("useOfFunds")}
-                className="mt-2"
+                className="mt-2 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
               />
               {form.formState.errors.useOfFunds && (
-                <p className="text-sm text-red-500 mt-1">{form.formState.errors.useOfFunds.message}</p>
+                <p className="text-sm text-red-400 mt-1">{form.formState.errors.useOfFunds.message}</p>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
-                <Label htmlFor="timeline">Timeline</Label>
+                <Label htmlFor="timeline" className="text-white">Timeline</Label>
                 <Input
                   id="timeline"
                   placeholder="6-12 months"
                   {...form.register("timeline")}
-                  className="mt-2"
+                  className="mt-2 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                 />
               </div>
               <div>
-                <Label htmlFor="expectedRoi">Expected ROI</Label>
+                <Label htmlFor="expectedRoi" className="text-white">Expected ROI</Label>
                 <Input
                   id="expectedRoi"
                   placeholder="20-25%"
                   {...form.register("expectedRoi")}
-                  className="mt-2"
+                  className="mt-2 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                 />
               </div>
             </div>
 
             <div className="mt-4">
-              <Label htmlFor="teamSize">Team Size</Label>
+              <Label htmlFor="teamSize" className="text-white">Team Size</Label>
               <Input
                 id="teamSize"
                 type="number"
                 placeholder="8"
                 {...form.register("teamSize", { valueAsNumber: true })}
-                className="mt-2"
+                className="mt-2 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
               />
             </div>
           </div>
@@ -308,7 +308,7 @@ export default function CreateListingPage() {
           <div className="space-y-3 pt-4">
             <Button 
               type="submit" 
-              className="w-full"
+              className="w-full bg-blue-600 hover:bg-blue-700"
               disabled={isLoading}
             >
               {isLoading ? "Publishing..." : "Publish Listing"}
@@ -316,19 +316,19 @@ export default function CreateListingPage() {
             <Button 
               type="button"
               variant="outline"
-              className="w-full"
+              className="w-full border-gray-600 text-white hover:bg-gray-800"
               onClick={saveDraft}
             >
               Save as Draft
             </Button>
           </div>
 
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="bg-green-900/20 border border-green-700/30 rounded-xl p-4">
             <div className="flex items-start space-x-3">
-              <CheckCircle className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
+              <CheckCircle className="h-5 w-5 text-green-400 mt-1 flex-shrink-0" />
               <div>
-                <p className="text-sm text-green-800 font-medium mb-1">Instant Publishing</p>
-                <p className="text-sm text-green-700">
+                <p className="text-sm text-green-400 font-medium mb-1">Instant Publishing</p>
+                <p className="text-sm text-green-300">
                   Your listing will be published immediately and visible to all investors.
                 </p>
               </div>

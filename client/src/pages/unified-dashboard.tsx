@@ -8,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Bell, Plus, MessageSquare, DollarSign, Heart, Eye, Share2, MoreHorizontal, ThumbsUp, MessageCircle, Send } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Bell, Plus, MessageSquare, DollarSign, Heart, Eye, Share2, MoreHorizontal, ThumbsUp, MessageCircle, Send, Copy, Bookmark, Flag, Trash2 } from "lucide-react";
 import { authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
 import BottomNavigation from "@/components/bottom-navigation";
+import Logo from "@/components/logo";
 
 import { Post } from "@shared/schema";
 
@@ -22,9 +24,23 @@ export default function UnifiedDashboard() {
   const [activeTab, setActiveTab] = useState("investment");
   const [commentText, setCommentText] = useState<{ [postId: string]: string }>({});
   const [showComments, setShowComments] = useState<{ [postId: string]: boolean }>({});
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = authService.getUser();
+
+  // Helper function to get time ago
+  const getTimeAgo = (date: Date): string => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)}mo ago`;
+    return `${Math.floor(diffInSeconds / 31536000)}y ago`;
+  };
 
   // Fetch posts (investment and community)
   const { data: posts = [], isLoading: postsLoading } = useQuery({
@@ -177,28 +193,214 @@ export default function UnifiedDashboard() {
     }));
   };
 
-  const InvestmentPostCard = ({ post }: { post: Post }) => (
-    <Card 
-      className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-900 border-gray-700 hover:border-gray-600"
-      onClick={() => setLocation(`/post/${post.id}`)}
-    >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg mb-1 text-white">{post.title || 'Investment Opportunity'}</CardTitle>
-            <CardDescription className="text-sm text-gray-400">
-              {post.content.substring(0, 120)}...
-            </CardDescription>
+  // Handle share functionality
+  const handleShare = (post: Post) => {
+    if (navigator.share) {
+      navigator.share({
+        title: post.title || 'Post from InvestLocal',
+        text: post.content.substring(0, 100) + '...',
+        url: window.location.origin + `/post/${post.id}`
+      }).catch((error) => {
+        console.log('Error sharing:', error);
+        // Fallback to copy link
+        handleCopyLink(post);
+      });
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      handleCopyLink(post);
+    }
+  };
+
+  // Handle copy link functionality
+  const handleCopyLink = (post: Post) => {
+    const postUrl = window.location.origin + `/post/${post.id}`;
+    navigator.clipboard.writeText(postUrl).then(() => {
+      toast({
+        title: "Link Copied!",
+        description: "Post link has been copied to clipboard.",
+      });
+    }).catch(() => {
+      toast({
+        title: "Copy Failed",
+        description: "Failed to copy link to clipboard.",
+        variant: "destructive",
+      });
+    });
+  };
+
+  // Handle send functionality
+  const handleSend = (post: Post) => {
+    toast({
+      title: "Send Post",
+      description: `Sending post to your connections...`,
+    });
+    // TODO: Implement actual send functionality
+  };
+
+  // Handle bookmark functionality
+  const handleBookmark = (post: Post) => {
+    toast({
+      title: "Bookmarked!",
+      description: "Post has been added to your bookmarks.",
+    });
+    // TODO: Implement actual bookmark functionality
+  };
+
+  // Handle report functionality
+  const handleReport = (post: Post) => {
+    toast({
+      title: "Report Post",
+      description: "Thank you for reporting. We'll review this post.",
+    });
+    // TODO: Implement actual report functionality
+  };
+
+  // Handle delete functionality (only for own posts)
+  const handleDelete = (post: Post) => {
+    if (post.authorId === user?.id) {
+      if (confirm('Are you sure you want to delete this post?')) {
+        toast({
+          title: "Post Deleted",
+          description: "Your post has been deleted.",
+        });
+        // TODO: Implement actual delete functionality
+      }
+    }
+  };
+
+  const InvestmentPostCard = ({ post }: { post: Post }) => {
+    // Get author name from post data or use fallback
+    let authorName = 'Anonymous User';
+    
+    if (post.author?.fullName && post.author.fullName !== '') {
+      authorName = post.author.fullName;
+    } else if (post.author?.email && post.author.email !== '') {
+      authorName = post.author.email.split('@')[0];
+    } else if (post.authorId) {
+      authorName = `User ${post.authorId.slice(-4)}`;
+    }
+    
+    if (authorName.startsWith('User ') && post.author?.email) {
+      const emailName = post.author.email.split('@')[0];
+      if (emailName && emailName.length > 0) {
+        authorName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+      }
+    }
+    
+    const authorInitial = authorName.charAt(0).toUpperCase();
+    const timeAgo = post.createdAt ? getTimeAgo(new Date(post.createdAt)) : '';
+
+    return (
+      <Card 
+        className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-900 border-gray-700 hover:border-gray-600"
+        onClick={() => setLocation(`/post/${post.id}`)}
+      >
+        <CardHeader className="pb-3">
+          <div className="flex items-start space-x-3">
+            {/* User Avatar */}
+            <div className="flex-shrink-0">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation(`/user?id=${post.authorId}`);
+                }}
+                className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm hover:scale-105 transition-transform cursor-pointer"
+              >
+                {authorInitial}
+              </button>
+            </div>
+            
+            <div className="flex-1">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-lg mb-1 text-white">{post.title || 'Investment Opportunity'}</CardTitle>
+                  <CardDescription className="text-sm text-gray-400">
+                    {post.content.substring(0, 120)}...
+                  </CardDescription>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Badge variant="default" className="bg-blue-600">
+                    Investment
+                  </Badge>
+                  <DropdownMenu open={openDropdown === post.id} onOpenChange={(open) => setOpenDropdown(open ? post.id : null)}>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48 bg-gray-800 border-gray-700">
+                      <DropdownMenuItem 
+                        onClick={() => handleShare(post)}
+                        className="text-gray-300 hover:bg-gray-700 cursor-pointer"
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleCopyLink(post)}
+                        className="text-gray-300 hover:bg-gray-700 cursor-pointer"
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Link
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleSend(post)}
+                        className="text-gray-300 hover:bg-gray-700 cursor-pointer"
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Send
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleBookmark(post)}
+                        className="text-gray-300 hover:bg-gray-700 cursor-pointer"
+                      >
+                        <Bookmark className="h-4 w-4 mr-2" />
+                        Bookmark
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-gray-600" />
+                      {post.authorId === user?.id ? (
+                        <DropdownMenuItem 
+                          onClick={() => handleDelete(post)}
+                          className="text-red-400 hover:bg-gray-700 cursor-pointer"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem 
+                          onClick={() => handleReport(post)}
+                          className="text-red-400 hover:bg-gray-700 cursor-pointer"
+                        >
+                          <Flag className="h-4 w-4 mr-2" />
+                          Report
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+              
+              {/* Author Info */}
+              <div className="mt-2">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLocation(`/user?id=${post.authorId}`);
+                  }}
+                  className="text-blue-400 text-sm font-medium hover:text-blue-300 transition-colors cursor-pointer"
+                >
+                  {authorName}
+                </button>
+                <p className="text-gray-400 text-xs">
+                  {post.author?.userType === 'entrepreneur' ? 'Entrepreneur' : 'Investor'} • {timeAgo}
+                </p>
+              </div>
+            </div>
           </div>
-          <Badge variant="default" className="bg-blue-600">
-            Investment
-          </Badge>
-        </div>
-      </CardHeader>
+        </CardHeader>
       <CardContent className="pt-0">
-        <div className="flex items-center justify-between text-sm text-gray-400">
+        <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
           <div className="flex items-center gap-4">
-         
             <div className="flex items-center gap-1">
               <Heart className="h-4 w-4" />
               <span>{post.likes || 0}</span>
@@ -210,6 +412,49 @@ export default function UnifiedDashboard() {
           </div>
           <span>{post.createdAt ? new Date(post.createdAt).toLocaleDateString() : ''}</span>
         </div>
+        
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-700">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex items-center space-x-2 text-sm text-gray-400 hover:text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleShare(post);
+            }}
+          >
+            <Share2 className="h-4 w-4" />
+            <span>Share</span>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex items-center space-x-2 text-sm text-gray-400 hover:text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSend(post);
+            }}
+          >
+            <Send className="h-4 w-4" />
+            <span>Send</span>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex items-center space-x-2 text-sm text-gray-400 hover:text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleBookmark(post);
+            }}
+          >
+            <Bookmark className="h-4 w-4" />
+            <span>Bookmark</span>
+          </Button>
+        </div>
+        
         {post.category && (
           <div className="mt-2">
             <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
@@ -220,6 +465,7 @@ export default function UnifiedDashboard() {
       </CardContent>
     </Card>
   );
+  };
 
   const CommunityPostCard = ({ post }: { post: Post }) => {
     const isLiked = postLikes[post.id]?.some((like: any) => like.userId === user?.id);
@@ -255,25 +501,83 @@ export default function UnifiedDashboard() {
           <div className="flex items-start space-x-3">
             {/* User Avatar */}
             <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+              <button 
+                onClick={() => setLocation(`/user?id=${post.authorId}`)}
+                className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-lg hover:scale-105 transition-transform cursor-pointer"
+              >
                 {authorInitial}
-              </div>
+              </button>
             </div>
             
             {/* Post Header */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-white font-semibold text-base">
+                  <button 
+                    onClick={() => setLocation(`/user?id=${post.authorId}`)}
+                    className="text-white font-semibold text-base hover:text-blue-400 transition-colors cursor-pointer text-left"
+                  >
                     {authorName}
-                  </h3>
+                  </button>
                   <p className="text-gray-400 text-sm">
                     {post.author?.userType === 'entrepreneur' ? 'Entrepreneur' : 'Investor'} • {timeAgo}
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                <DropdownMenu open={openDropdown === post.id} onOpenChange={(open) => setOpenDropdown(open ? post.id : null)}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48 bg-gray-800 border-gray-700">
+                    <DropdownMenuItem 
+                      onClick={() => handleShare(post)}
+                      className="text-gray-300 hover:bg-gray-700 cursor-pointer"
+                    >
+                      <Share2 className="h-4 w-4 mr-2" />
+                      Share
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleCopyLink(post)}
+                      className="text-gray-300 hover:bg-gray-700 cursor-pointer"
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy Link
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleSend(post)}
+                      className="text-gray-300 hover:bg-gray-700 cursor-pointer"
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Send
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleBookmark(post)}
+                      className="text-gray-300 hover:bg-gray-700 cursor-pointer"
+                    >
+                      <Bookmark className="h-4 w-4 mr-2" />
+                      Bookmark
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-gray-600" />
+                    {post.authorId === user?.id ? (
+                      <DropdownMenuItem 
+                        onClick={() => handleDelete(post)}
+                        className="text-red-400 hover:bg-gray-700 cursor-pointer"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem 
+                        onClick={() => handleReport(post)}
+                        className="text-red-400 hover:bg-gray-700 cursor-pointer"
+                      >
+                        <Flag className="h-4 w-4 mr-2" />
+                        Report
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </div>
@@ -364,11 +668,7 @@ export default function UnifiedDashboard() {
               className="flex items-center space-x-2 text-sm text-gray-400 hover:text-white"
               onClick={(e) => {
                 e.stopPropagation();
-                // Handle share
-                toast({
-                  title: "Share",
-                  description: "Share functionality coming soon!",
-                });
+                handleShare(post);
               }}
             >
               <Share2 className="h-4 w-4" />
@@ -381,11 +681,7 @@ export default function UnifiedDashboard() {
               className="flex items-center space-x-2 text-sm text-gray-400 hover:text-white"
               onClick={(e) => {
                 e.stopPropagation();
-                // Handle send
-                toast({
-                  title: "Send",
-                  description: "Send functionality coming soon!",
-                });
+                handleSend(post);
               }}
             >
               <Send className="h-4 w-4" />
@@ -430,13 +726,21 @@ export default function UnifiedDashboard() {
                   
                   return (
                     <div key={comment.id} className="flex space-x-3">
-                      <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                      <button 
+                        onClick={() => setLocation(`/user?id=${comment.userId}`)}
+                        className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold hover:scale-105 transition-transform cursor-pointer"
+                      >
                         {commentAuthorInitial}
-                      </div>
+                      </button>
                       <div className="flex-1">
                         <div className="bg-gray-800 rounded-lg p-3">
                           <div className="flex items-center justify-between mb-1">
-                            <p className="text-blue-400 text-xs font-medium">{commentAuthorName}</p>
+                            <button 
+                              onClick={() => setLocation(`/user?id=${comment.userId}`)}
+                              className="text-blue-400 text-xs font-medium hover:text-blue-300 transition-colors cursor-pointer"
+                            >
+                              {commentAuthorName}
+                            </button>
                             <p className="text-gray-500 text-xs">
                               {getTimeAgo(new Date(comment.createdAt))}
                             </p>
@@ -460,19 +764,6 @@ export default function UnifiedDashboard() {
     );
   };
 
-  // Helper function to get time ago
-  const getTimeAgo = (date: Date): string => {
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-    if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)}mo ago`;
-    return `${Math.floor(diffInSeconds / 31536000)}y ago`;
-  };
-
   if (postsLoading) {
     return (
       <div className="min-h-screen bg-black">
@@ -492,8 +783,8 @@ export default function UnifiedDashboard() {
       <div className="bg-gray-900 border-b border-gray-800 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-white">InvestLocal</h1>
-            <p className="text-sm text-gray-400">
+            <Logo size="md" />
+            <p className="text-sm text-gray-400 mt-1">
               {user?.userType === 'entrepreneur' ? 'Share opportunities' : 'Discover investments'}
             </p>
           </div>

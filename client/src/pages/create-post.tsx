@@ -164,11 +164,11 @@ export default function CreatePost() {
               <TabsList className="grid w-full grid-cols-2 bg-gray-800 border-gray-600">
                 <TabsTrigger value="investment" className="flex items-center gap-2 text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                   <DollarSign className="h-4 w-4" />
-                  Investment Opportunity
+                  Investment
                 </TabsTrigger>
                 <TabsTrigger value="community" className="flex items-center gap-2 text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                   <MessageSquare className="h-4 w-4" />
-                  Community Post
+                  Community
                 </TabsTrigger>
               </TabsList>
 

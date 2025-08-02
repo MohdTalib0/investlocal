@@ -148,6 +148,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get public user profile by ID
+  app.get("/api/users/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Return public profile data (exclude sensitive information)
+      res.json({
+        id: user.id,
+        fullName: user.fullName,
+        userType: user.userType,
+        city: user.city,
+        bio: user.bio,
+        avatar: user.avatar,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt
+      });
+    } catch (error) {
+      console.error("Get user profile error:", error);
+      res.status(500).json({ message: "Failed to get user profile" });
+    }
+  });
+
   // Business listing routes
   app.post("/api/listings", authenticateToken, async (req: any, res) => {
     try {

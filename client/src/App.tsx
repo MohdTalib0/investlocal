@@ -15,6 +15,9 @@ import OpportunityDetailPage from "@/pages/opportunity-detail";
 import ChatPage from "@/pages/chat";
 import ProfilePage from "@/pages/profile";
 import AdminDashboardPage from "@/pages/admin-dashboard";
+import UserProfilePage from "@/pages/user-profile";
+import AnalyticsPage from "@/pages/analytics";
+import SavedOpportunitiesPage from "@/pages/saved-opportunities";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -59,6 +62,21 @@ function Router() {
       <Route path="/profile">
         <ProtectedRoute>
           <ProfilePage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/user">
+        <ProtectedRoute>
+          <UserProfilePage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/analytics">
+        <ProtectedRoute>
+          <AnalyticsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/saved">
+        <ProtectedRoute>
+          <SavedOpportunitiesPage />
         </ProtectedRoute>
       </Route>
       <Route path="/admin">
