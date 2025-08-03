@@ -19,7 +19,7 @@ const Logo = ({ size = 'md', className = '' }: LogoProps) => {
     },
     xl: {
       container: 'w-64 h-16',
-      image: 'w-60 h-14'
+      image: 'w-65 h-44'
     }
   };
 
