@@ -4,7 +4,8 @@ import { useLocation, useParams } from "wouter";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Phone, MoreVertical, Paperclip, Smile, Send, Download, FileText } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, Phone, MoreVertical, Paperclip, Smile, Send, Download, FileText, User, Flag, Block, Volume2, VolumeX } from "lucide-react";
 import { authenticatedApiRequest, authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import BottomNavigation from "@/components/bottom-navigation";
@@ -44,6 +45,7 @@ export default function ChatPage() {
   const { clearNotifications } = useNotificationContext();
   
   const [selectedUserId, setSelectedUserId] = useState<string | null>(params.userId || null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const { register, handleSubmit, reset, watch } = useForm<{ message: string }>({
     defaultValues: { message: "" }
@@ -121,6 +123,36 @@ export default function ChatPage() {
   const onSubmit = (data: { message: string }) => {
     if (!data.message.trim()) return;
     sendMessage.mutate(data);
+  };
+
+  const handleViewProfile = () => {
+    if (selectedUserId) {
+      setLocation(`/user?id=${selectedUserId}`);
+    }
+  };
+
+  const handleReportUser = () => {
+    toast({
+      title: "Report User",
+      description: "Report functionality will be implemented soon.",
+      variant: "default",
+    });
+  };
+
+  const handleBlockUser = () => {
+    toast({
+      title: "Block User",
+      description: "Block functionality will be implemented soon.",
+      variant: "default",
+    });
+  };
+
+  const handleMuteNotifications = () => {
+    toast({
+      title: "Mute Notifications",
+      description: "Notification mute functionality will be implemented soon.",
+      variant: "default",
+    });
   };
 
   const formatTime = (dateString: string) => {
@@ -286,9 +318,43 @@ export default function ChatPage() {
             <Button variant="ghost" size="icon" className="text-white hover:bg-gray-800">
               <Phone className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-white hover:bg-gray-800">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
+            <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-white hover:bg-gray-800">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-gray-900 border-gray-700">
+                <DropdownMenuItem
+                  onClick={handleViewProfile}
+                  className="text-gray-300 hover:bg-gray-800 cursor-pointer"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  View Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleMuteNotifications}
+                  className="text-gray-300 hover:bg-gray-800 cursor-pointer"
+                >
+                  <VolumeX className="h-4 w-4 mr-2" />
+                  Mute Notifications
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleReportUser}
+                  className="text-gray-300 hover:bg-gray-800 cursor-pointer"
+                >
+                  <Flag className="h-4 w-4 mr-2" />
+                  Report User
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleBlockUser}
+                  className="text-red-400 hover:bg-gray-800 cursor-pointer"
+                >
+                  <Block className="h-4 w-4 mr-2" />
+                  Block User
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

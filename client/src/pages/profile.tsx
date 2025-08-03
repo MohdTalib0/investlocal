@@ -1174,45 +1174,45 @@ export default function ProfilePage() {
           {/* Left Side - Profile Picture */}
           <div className="flex-shrink-0">
             <div className="w-20 h-20 rounded-full border-4 border-white bg-white/10 flex items-center justify-center">
-              {profile?.avatar ? (
-                <img 
-                  src={profile.avatar} 
-                  alt={profile.fullName}
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                <span className="text-2xl font-bold text-white">
-                  {profile?.fullName?.charAt(0) || "U"}
-                </span>
-              )}
-            </div>
+            {profile?.avatar ? (
+              <img 
+                src={profile.avatar} 
+                alt={profile.fullName}
+                className="w-full h-full rounded-full object-cover"
+              />
+            ) : (
+              <span className="text-2xl font-bold text-white">
+                {profile?.fullName?.charAt(0) || "U"}
+              </span>
+            )}
+          </div>
           </div>
           
           {/* Right Side - Name, City, Role */}
           <div className="flex-1 text-left">
-            <h2 className="text-xl font-bold text-white mb-1">
-              {profile?.fullName || "User"}
-            </h2>
+          <h2 className="text-xl font-bold text-white mb-1">
+            {profile?.fullName || "User"}
+          </h2>
             <p className="text-blue-100 text-sm mb-1">
               {profile?.city}
             </p>
             <p className="text-blue-100 capitalize text-sm mb-3">
-              {profile?.userType || "User"}
-            </p>
-            
-            {/* Verification Status */}
+            {profile?.userType || "User"}
+          </p>
+          
+          {/* Verification Status */}
             <div className="flex items-center space-x-2">
-              <Badge 
-                variant="secondary" 
-                className={`${
-                  profile?.isVerified 
-                    ? "bg-green-500 bg-opacity-20 text-green-100" 
-                    : "bg-yellow-500 bg-opacity-20 text-yellow-100"
-                }`}
-              >
-                <CheckCircle className="h-3 w-3 mr-1" />
-                {profile?.isVerified ? "KYC Verified" : "Verification Pending"}
-              </Badge>
+            <Badge 
+              variant="secondary" 
+              className={`${
+                profile?.isVerified 
+                  ? "bg-green-500 bg-opacity-20 text-green-100" 
+                  : "bg-yellow-500 bg-opacity-20 text-yellow-100"
+              }`}
+            >
+              <CheckCircle className="h-3 w-3 mr-1" />
+              {profile?.isVerified ? "KYC Verified" : "Verification Pending"}
+            </Badge>
             </div>
           </div>
         </div>

@@ -22,14 +22,16 @@ class AuthService {
   private user: User | null = null;
 
   constructor() {
-    // Load from localStorage on initialization
-    this.token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        this.user = JSON.parse(storedUser);
-      } catch (e) {
-        localStorage.removeItem('user');
+    // Only access localStorage in browser environment
+    if (typeof window !== 'undefined' && window.localStorage) {
+      this.token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          this.user = JSON.parse(storedUser);
+        } catch (e) {
+          localStorage.removeItem('user');
+        }
       }
     }
   }
@@ -60,8 +62,10 @@ class AuthService {
   logout(): void {
     this.token = null;
     this.user = null;
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
   }
 
   getToken(): string | null {
@@ -79,8 +83,10 @@ class AuthService {
   private setAuthData(data: AuthResponse): void {
     this.token = data.token;
     this.user = data.user;
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+    }
   }
 
   // Add Authorization header to requests
@@ -91,6 +97,16 @@ class AuthService {
       };
     }
     return {};
+  }
+
+  // Verify token (can be used on server side)
+  verifyToken(token: string): any {
+    try {
+      const jwt = require('jsonwebtoken');
+      return jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    } catch (error) {
+      return null;
+    }
   }
 }
 

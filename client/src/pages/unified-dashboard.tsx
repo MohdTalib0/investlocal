@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 
 import BottomNavigation from "@/components/bottom-navigation";
 import Logo from "@/components/logo";
+import { useNotificationContext } from "@/contexts/NotificationContext";
 
 import { Post } from "@shared/schema";
 
@@ -28,6 +29,7 @@ export default function UnifiedDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = authService.getUser();
+  const { unreadCount, notifications } = useNotificationContext();
 
   // Helper function to get time ago
   const getTimeAgo = (date: Date): string => {
@@ -99,7 +101,7 @@ export default function UnifiedDashboard() {
           if (response.ok) {
             commentsData[post.id] = await response.json();
           }
-        } catch (error) {
+      } catch (error) {
           console.error(`Failed to fetch comments for post ${post.id}:`, error);
         }
       }
@@ -291,11 +293,11 @@ export default function UnifiedDashboard() {
     const timeAgo = post.createdAt ? getTimeAgo(new Date(post.createdAt)) : '';
 
     return (
-      <Card 
+    <Card 
         className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-900 border-gray-700 hover:border-gray-600"
-        onClick={() => setLocation(`/post/${post.id}`)}
-      >
-        <CardHeader className="pb-3">
+      onClick={() => setLocation(`/post/${post.id}`)}
+    >
+      <CardHeader className="pb-3">
           <div className="flex items-start space-x-3">
             {/* User Avatar */}
             <div className="flex-shrink-0">
@@ -311,17 +313,17 @@ export default function UnifiedDashboard() {
             </div>
             
             <div className="flex-1">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
                   <CardTitle className="text-lg mb-1 text-white">{post.title || 'Investment Opportunity'}</CardTitle>
                   <CardDescription className="text-sm text-gray-400">
-                    {post.content.substring(0, 120)}...
-                  </CardDescription>
-                </div>
+              {post.content.substring(0, 120)}...
+            </CardDescription>
+          </div>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default" className="bg-blue-600">
                     Investment
-                  </Badge>
+          </Badge>
                   <DropdownMenu open={openDropdown === post.id} onOpenChange={(open) => setOpenDropdown(open ? post.id : null)}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
@@ -396,8 +398,8 @@ export default function UnifiedDashboard() {
                 </p>
               </div>
             </div>
-          </div>
-        </CardHeader>
+        </div>
+      </CardHeader>
       <CardContent className="pt-0">
         <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
           <div className="flex items-center gap-4">
@@ -405,10 +407,10 @@ export default function UnifiedDashboard() {
               <Heart className="h-4 w-4" />
               <span>{post.likes || 0}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <DollarSign className="h-4 w-4" />
-              <span>₹{post.fundingMin?.toLocaleString()}-{post.fundingMax?.toLocaleString()}</span>
-            </div>
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-4 w-4" />
+                <span>₹{post.fundingMin?.toLocaleString()}-{post.fundingMax?.toLocaleString()}</span>
+              </div>
           </div>
           <span>{post.createdAt ? new Date(post.createdAt).toLocaleDateString() : ''}</span>
         </div>
@@ -780,25 +782,82 @@ export default function UnifiedDashboard() {
   return (
     <div className="min-h-screen bg-black pb-20">
       {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-800 px-6 py-4">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 border-b border-blue-500 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <Logo size="md" />
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-xs mt-1 text-yellow-600">
               {user?.userType === 'entrepreneur' ? 'Share opportunities' : 'Discover investments'}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="relative text-white hover:bg-gray-800">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                2
-              </span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative text-white hover:bg-blue-500/20"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 bg-gray-900 border-gray-700 max-h-96 overflow-y-auto">
+                <div className="p-3 border-b border-gray-700">
+                  <h3 className="text-white font-semibold">Notifications</h3>
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center">
+                    <p className="text-gray-400 text-sm">No new notifications</p>
+                  </div>
+                ) : (
+                  <div className="p-2">
+                    {notifications.slice(0, 5).map((notification) => (
+                      <DropdownMenuItem
+                        key={notification.id}
+                        className="flex items-start space-x-3 p-3 hover:bg-gray-800 cursor-pointer"
+                        onClick={() => setLocation(`/chat/${notification.senderId}`)}
+                      >
+                        <div className="w-8 h-8 bg-blue-600/20 rounded-full flex items-center justify-center flex-shrink-0">
+                          <MessageSquare className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm font-medium truncate">
+                            {notification.senderName}
+                          </p>
+                          <p className="text-gray-400 text-xs truncate">
+                            {notification.content}
+                          </p>
+                          <p className="text-gray-500 text-xs mt-1">
+                            {getTimeAgo(new Date(notification.timestamp))}
+                          </p>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                    {notifications.length > 5 && (
+                      <div className="p-2 border-t border-gray-700">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-blue-400 hover:text-blue-300"
+                          onClick={() => setLocation("/chat")}
+                        >
+                          View all notifications
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button 
               onClick={() => setLocation("/create-post")}
               size="sm"
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+              className="flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-semibold shadow-lg"
             >
               <Plus className="h-4 w-4" />
               Create Post
@@ -808,7 +867,7 @@ export default function UnifiedDashboard() {
       </div>
 
       {/* Category Filter */}
-      <div className="px-6 py-4">
+        <div className="px-6 py-4">
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className="w-full bg-gray-900 border-gray-700 text-white">
             <SelectValue placeholder="Filter by category" />
@@ -817,9 +876,9 @@ export default function UnifiedDashboard() {
             <SelectItem value="All" className="text-white hover:bg-gray-800">All Categories</SelectItem>
             {categories.slice(1).map((category) => (
               <SelectItem key={category} value={category} className="text-white hover:bg-gray-800">
-                {category}
+              {category}
               </SelectItem>
-            ))}
+          ))}
           </SelectContent>
         </Select>
       </div>

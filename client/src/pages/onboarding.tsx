@@ -13,6 +13,7 @@ import {
   Heart,
   Zap
 } from "lucide-react";
+import Logo from "@/components/logo";
 
 export default function OnboardingPage() {
   const [, setLocation] = useLocation();
@@ -77,9 +78,9 @@ export default function OnboardingPage() {
             </div>
           </div>
           
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
-            InvestLocal
-          </h1>
+          <div className="mb-4">
+            <Logo size="xl" />
+          </div>
           <p className="text-xl text-gray-300 mb-2">Connecting Local Entrepreneurs</p>
           <p className="text-xl text-gray-300 mb-8">with Smart Investors</p>
 
