@@ -121,3 +121,13 @@
 .animation-delay-6000 {
   animation-delay: 6s;
 }
+
+/* Chat media fallback styles */
+.fallback-to-file .fallback-file-display {
+  display: flex !important;
+}
+
+.fallback-to-file img,
+.fallback-to-file video {
+  display: none !important;
+}

@@ -529,16 +529,21 @@ export async function registerRoutes(app: Express, notificationService?: any): P
   // Post routes (unified investment & community posts)
   app.post("/api/posts", authenticateToken, async (req: any, res) => {
     try {
-      console.log('API: Creating post with data:', req.body);
-      const postData = insertPostSchema.parse({
-        ...req.body,
+      if (!req.user?.userId) {
+        return res.status(401).json({ message: "User not authenticated properly" });
+      }
+      
+      // First validate the client data
+      const validatedData = insertPostSchema.parse(req.body);
+      
+      // Then create the full post data with server-added fields
+      const postData = {
+        ...validatedData,
         authorId: req.user.userId,
         status: "approved", // Auto-approve all posts
-      });
+      };
       
-      console.log('API: Parsed post data:', postData);
       const post = await storage.createPost(postData);
-      console.log('API: Created post:', post);
       res.json(post);
     } catch (error) {
       console.error("Create post error:", error);
@@ -570,16 +575,12 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         status: req.query.status as string,
       };
       
-      console.log('API: Getting posts with filters:', filters);
       const posts = await storage.getPosts(filters);
       
       // Get user data for each post
       const postsWithUsers = await Promise.all(
         posts.map(async (post) => {
           const author = await storage.getUser(post.authorId);
-          console.log(`Post ${post.id} - Author ID: ${post.authorId}, Author Data:`, author);
-          console.log(`Author fullName:`, author?.fullName);
-          console.log(`Author keys:`, author ? Object.keys(author) : 'No author');
           return {
             ...post,
             author: author ? {
@@ -593,7 +594,6 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         })
       );
       
-      console.log('API: Found posts:', postsWithUsers.length);
       res.json(postsWithUsers);
     } catch (error) {
       console.error("Get posts error:", error);
@@ -875,6 +875,29 @@ export async function registerRoutes(app: Express, notificationService?: any): P
           mimetype: req.file.mimetype,
           url: fileUrl
         }
+      });
+    } catch (error) {
+      console.error("File upload error:", error);
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
+  // General file upload endpoint
+  app.post("/api/upload", authenticateToken, upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Create file URL
+      const fileUrl = `/uploads/${req.file.filename}`;
+      
+      res.json({
+        url: fileUrl,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
       });
     } catch (error) {
       console.error("File upload error:", error);

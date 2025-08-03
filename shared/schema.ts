@@ -338,6 +338,7 @@ export const insertPostSchema = createInsertSchema(posts).omit({
   createdAt: true,
   views: true,
   likes: true,
+  authorId: true, // Server adds this automatically from authenticated user
 });
 
 export const insertPostLikeSchema = createInsertSchema(postLikes).omit({

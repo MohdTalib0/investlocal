@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Bell, Plus, MessageSquare, DollarSign, Heart, Eye, Share2, MoreHorizontal, ThumbsUp, MessageCircle, Send, Copy, Bookmark, Flag, Trash2 } from "lucide-react";
 import { authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +27,8 @@ export default function UnifiedDashboard() {
   const [commentText, setCommentText] = useState<{ [postId: string]: string }>({});
   const [showComments, setShowComments] = useState<{ [postId: string]: boolean }>({});
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<Post | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = authService.getUser();
@@ -155,6 +158,38 @@ export default function UnifiedDashboard() {
     },
   });
 
+  // Delete post mutation
+  const deletePostMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      const token = authService.getToken();
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to delete post');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      setDeleteDialogOpen(false);
+      setPostToDelete(null);
+      toast({
+        title: "Success",
+        description: "Post deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const categories = ["All", "Tech Startups", "Food & Beverage", "Retail", "Education", "Healthcare", "Manufacturing", "Agriculture", "Services"];
 
   // Filter function for posts
@@ -250,13 +285,15 @@ export default function UnifiedDashboard() {
   // Handle delete functionality (only for own posts)
   const handleDelete = (post: Post) => {
     if (post.authorId === user?.id) {
-      if (confirm('Are you sure you want to delete this post?')) {
-        toast({
-          title: "Post Deleted",
-          description: "Your post has been deleted.",
-        });
-        // TODO: Implement actual delete functionality
-      }
+      setPostToDelete(post);
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  // Confirm delete function
+  const confirmDelete = () => {
+    if (postToDelete) {
+      deletePostMutation.mutate(postToDelete.id);
     }
   };
 
@@ -405,45 +442,69 @@ export default function UnifiedDashboard() {
           <span>{post.createdAt ? new Date(post.createdAt).toLocaleDateString() : ''}</span>
         </div>
         
+        {/* Post Images */}
+        {post.images && post.images.length > 0 && (
+          <div className="mb-4">
+            <div className="grid grid-cols-1 gap-2">
+              {post.images.map((image, index) => (
+                <div key={index} className="relative group">
+                  <img 
+                    src={image} 
+                    alt={`Post image ${index + 1}`}
+                    className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(image, '_blank')}
+                    onError={(e) => {
+                      // Fallback to placeholder if image fails to load
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                  {/* Fallback placeholder */}
+                  <div className="aspect-video bg-gray-800 rounded-lg flex items-center justify-center hidden">
+                    <span className="text-gray-400 text-sm">📷 Image {index + 1}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
         {/* Action Buttons */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-700">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="flex items-center space-x-2 text-sm text-gray-400 hover:text-white"
+            className="flex items-center justify-center text-gray-400 hover:text-white"
             onClick={(e) => {
               e.stopPropagation();
               handleShare(post);
             }}
           >
-            <Share2 className="h-4 w-4" />
-            <span>Share</span>
+            <Share2 className="h-5 w-5" />
           </Button>
           
           <Button 
             variant="ghost" 
             size="sm" 
-            className="flex items-center space-x-2 text-sm text-gray-400 hover:text-white"
+            className="flex items-center justify-center text-gray-400 hover:text-white"
             onClick={(e) => {
               e.stopPropagation();
               handleSend(post);
             }}
           >
-            <Send className="h-4 w-4" />
-            <span>Send</span>
+            <Send className="h-5 w-5" />
           </Button>
           
           <Button 
             variant="ghost" 
             size="sm" 
-            className="flex items-center space-x-2 text-sm text-gray-400 hover:text-white"
+            className="flex items-center justify-center text-gray-400 hover:text-white"
             onClick={(e) => {
               e.stopPropagation();
               handleBookmark(post);
             }}
           >
-            <Bookmark className="h-4 w-4" />
-            <span>Bookmark</span>
+            <Bookmark className="h-5 w-5" />
           </Button>
         </div>
         
@@ -588,8 +649,22 @@ export default function UnifiedDashboard() {
             <div className="mb-4">
               <div className="grid grid-cols-1 gap-2">
                 {post.images.map((image, index) => (
-                  <div key={index} className="aspect-video bg-gray-800 rounded-lg flex items-center justify-center">
-                    <span className="text-gray-400 text-sm">📷 Image {index + 1}</span>
+                  <div key={index} className="relative group">
+                    <img 
+                      src={image} 
+                      alt={`Post image ${index + 1}`}
+                      className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => window.open(image, '_blank')}
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    {/* Fallback placeholder */}
+                    <div className="aspect-video bg-gray-800 rounded-lg flex items-center justify-center hidden">
+                      <span className="text-gray-400 text-sm">📷 Image {index + 1}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -628,7 +703,7 @@ export default function UnifiedDashboard() {
             <Button 
               variant="ghost" 
               size="sm" 
-              className={`flex items-center space-x-2 text-sm ${
+              className={`flex items-center justify-center ${
                 isLiked ? 'text-blue-400' : 'text-gray-400 hover:text-white'
               }`}
               onClick={(e) => {
@@ -637,47 +712,43 @@ export default function UnifiedDashboard() {
               }}
               disabled={likeMutation.isPending}
             >
-              <ThumbsUp className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
-              <span>Like</span>
+              <ThumbsUp className={`h-5 w-5 ${isLiked ? 'fill-current' : ''}`} />
             </Button>
             
             <Button 
               variant="ghost" 
               size="sm" 
-              className="flex items-center space-x-2 text-sm text-gray-400 hover:text-white"
+              className="flex items-center justify-center text-gray-400 hover:text-white"
               onClick={(e) => {
                 e.stopPropagation();
                 toggleComments(post.id);
               }}
             >
-              <MessageCircle className="h-4 w-4" />
-              <span>Comment</span>
+              <MessageCircle className="h-5 w-5" />
             </Button>
             
             <Button 
               variant="ghost" 
               size="sm" 
-              className="flex items-center space-x-2 text-sm text-gray-400 hover:text-white"
+              className="flex items-center justify-center text-gray-400 hover:text-white"
               onClick={(e) => {
                 e.stopPropagation();
                 handleShare(post);
               }}
             >
-              <Share2 className="h-4 w-4" />
-              <span>Share</span>
+              <Share2 className="h-5 w-5" />
             </Button>
             
             <Button 
               variant="ghost" 
               size="sm" 
-              className="flex items-center space-x-2 text-sm text-gray-400 hover:text-white"
+              className="flex items-center justify-center text-gray-400 hover:text-white"
               onClick={(e) => {
                 e.stopPropagation();
                 handleSend(post);
               }}
             >
-              <Send className="h-4 w-4" />
-              <span>Send</span>
+              <Send className="h-5 w-5" />
             </Button>
           </div>
 
@@ -932,6 +1003,30 @@ export default function UnifiedDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-gray-900 border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Post</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              Are you sure you want to delete this post? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deletePostMutation.isPending}
+            >
+              {deletePostMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <BottomNavigation activeTab="home" />
     </div>

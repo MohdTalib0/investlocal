@@ -49,6 +49,7 @@ export default function ChatPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFileUrl, setSelectedFileUrl] = useState<string | null>(null);
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(true);
@@ -127,6 +128,15 @@ export default function ChatPage() {
     }
   }, [selectedUserId, messages.length, clearNotifications]);
 
+  // Cleanup file URL on unmount
+  useEffect(() => {
+    return () => {
+      if (selectedFileUrl) {
+        URL.revokeObjectURL(selectedFileUrl);
+      }
+    };
+  }, [selectedFileUrl]);
+
   const onSubmit = (data: { message: string }) => {
     if (!data.message.trim()) return;
     sendMessage.mutate(data);
@@ -165,7 +175,16 @@ export default function ChatPage() {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Clean up previous file URL if exists
+      if (selectedFileUrl) {
+        URL.revokeObjectURL(selectedFileUrl);
+      }
+      
+      // Create new object URL for preview
+      const fileUrl = URL.createObjectURL(file);
       setSelectedFile(file);
+      setSelectedFileUrl(fileUrl);
+      
       toast({
         title: "File Selected",
         description: `${file.name} is ready to send`,
@@ -202,7 +221,12 @@ export default function ChatPage() {
       return response.json();
     },
     onSuccess: () => {
+      // Clean up file URL
+      if (selectedFileUrl) {
+        URL.revokeObjectURL(selectedFileUrl);
+      }
       setSelectedFile(null);
+      setSelectedFileUrl(null);
       queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedUserId] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
       toast({
@@ -223,6 +247,14 @@ export default function ChatPage() {
     if (selectedFile) {
       sendFile.mutate(selectedFile);
     }
+  };
+
+  const handleClearSelectedFile = () => {
+    if (selectedFileUrl) {
+      URL.revokeObjectURL(selectedFileUrl);
+    }
+    setSelectedFile(null);
+    setSelectedFileUrl(null);
   };
 
   const handleStartCall = async () => {
@@ -588,6 +620,8 @@ export default function ChatPage() {
             {messages.map((message: Message) => {
               const isFromCurrentUser = message.senderId === currentUser?.id;
               
+
+              
               return (
                 <div
                   key={message.id}
@@ -609,38 +643,125 @@ export default function ChatPage() {
                           : "bg-gray-800 text-white rounded-tl-md"
                       }`}
                     >
-                      {message.messageType === "file" && message.fileUrl ? (
-                        <div className="flex items-center space-x-3 p-3 bg-gray-700 bg-opacity-50 rounded-lg border border-gray-600">
-                          {message.content.toLowerCase().includes('.jpg') || 
-                           message.content.toLowerCase().includes('.jpeg') || 
-                           message.content.toLowerCase().includes('.png') || 
-                           message.content.toLowerCase().includes('.gif') || 
-                           message.content.toLowerCase().includes('.webp') ? (
-                            <Image className="h-5 w-5 text-blue-400" />
-                          ) : message.content.toLowerCase().includes('.pdf') ? (
-                            <FileText className="h-5 w-5 text-red-400" />
-                          ) : message.content.toLowerCase().includes('.doc') || 
-                               message.content.toLowerCase().includes('.docx') ? (
-                            <FileText className="h-5 w-5 text-blue-400" />
-                          ) : message.content.toLowerCase().includes('.xls') || 
-                               message.content.toLowerCase().includes('.xlsx') ? (
-                            <FileText className="h-5 w-5 text-green-400" />
-                          ) : (
-                            <FileText className="h-5 w-5 text-gray-400" />
-                          )}
-                          <div className="flex-1">
-                            <p className="text-sm font-medium truncate">{message.content}</p>
-                            <p className="text-xs opacity-75">Click to download</p>
-                          </div>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="text-white hover:bg-gray-600"
-                            onClick={() => window.open(message.fileUrl, '_blank')}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      {(message.messageType === "file" || message.fileUrl) ? (
+                        (() => {
+                          // Check if it's an image or video based on filename or content
+                          const isImage = message.content.toLowerCase().includes('.jpg') || 
+                                         message.content.toLowerCase().includes('.jpeg') || 
+                                         message.content.toLowerCase().includes('.png') || 
+                                         message.content.toLowerCase().includes('.gif') || 
+                                         message.content.toLowerCase().includes('.webp') ||
+                                         message.content.toLowerCase().includes('image') ||
+                                         message.content.toLowerCase().includes('img');
+                          const isVideo = message.content.toLowerCase().includes('.mp4') || 
+                                         message.content.toLowerCase().includes('.mov') || 
+                                         message.content.toLowerCase().includes('.avi') || 
+                                         message.content.toLowerCase().includes('.mkv') || 
+                                         message.content.toLowerCase().includes('.webm') ||
+                                         message.content.toLowerCase().includes('video');
+                          
+                          if (isImage || isVideo) {
+                            return (
+                              <div className="relative group">
+                                {/* Media Container */}
+                                <div className={`relative overflow-hidden rounded-lg ${
+                                  isFromCurrentUser ? 'rounded-tr-md' : 'rounded-tl-md'
+                                }`}>
+                                  {isImage ? (
+                                    <img 
+                                      src={message.fileUrl || ''} 
+                                      alt="Shared image"
+                                      className="max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                                      onClick={() => message.fileUrl && window.open(message.fileUrl, '_blank')}
+                                      onError={(e) => {
+                                        // Fallback to file attachment style if image fails to load
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.parentElement?.classList.add('fallback-to-file');
+                                      }}
+                                    />
+                                  ) : (
+                                    <video 
+                                      src={message.fileUrl || ''}
+                                      className="max-w-full h-auto cursor-pointer"
+                                      controls
+                                      preload="metadata"
+                                      onError={(e) => {
+                                        // Fallback to file attachment style if video fails to load
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.parentElement?.classList.add('fallback-to-file');
+                                      }}
+                                    />
+                                  )}
+                                  
+                                  {/* Overlay with download button */}
+                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost" 
+                                      className="opacity-0 group-hover:opacity-100 bg-black bg-opacity-50 hover:bg-opacity-70 text-white"
+                                      onClick={() => message.fileUrl && window.open(message.fileUrl, '_blank')}
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                  
+                                  {/* Fallback file display when media fails to load */}
+                                  <div className="fallback-file-display hidden fallback-to-file:flex items-center space-x-3 p-3 bg-gray-700 bg-opacity-50 rounded-lg border border-gray-600">
+                                    <Image className="h-5 w-5 text-blue-400" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium truncate">{message.content}</p>
+                                      <p className="text-xs opacity-75">Click to download</p>
+                                    </div>
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost" 
+                                      className="text-white hover:bg-gray-600"
+                                      onClick={() => message.fileUrl && window.open(message.fileUrl, '_blank')}
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                
+                                {/* File name and time */}
+                                <div className="mt-2">
+                                  <p className="text-xs text-gray-300 font-medium truncate">
+                                    {message.content}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            // For other file types, keep the existing layout
+                            return (
+                              <div className="flex items-center space-x-3 p-3 bg-gray-700 bg-opacity-50 rounded-lg border border-gray-600">
+                                {message.content.toLowerCase().includes('.pdf') ? (
+                                  <FileText className="h-5 w-5 text-red-400" />
+                                ) : message.content.toLowerCase().includes('.doc') || 
+                                     message.content.toLowerCase().includes('.docx') ? (
+                                  <FileText className="h-5 w-5 text-blue-400" />
+                                ) : message.content.toLowerCase().includes('.xls') || 
+                                     message.content.toLowerCase().includes('.xlsx') ? (
+                                  <FileText className="h-5 w-5 text-green-400" />
+                                ) : (
+                                  <FileText className="h-5 w-5 text-gray-400" />
+                                )}
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium truncate">{message.content}</p>
+                                  <p className="text-xs opacity-75">Click to download</p>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="text-white hover:bg-gray-600"
+                                  onClick={() => window.open(message.fileUrl, '_blank')}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            );
+                          }
+                        })()
                       ) : (
                         <p className="text-sm">{message.content}</p>
                       )}
@@ -669,39 +790,95 @@ export default function ChatPage() {
           type="file"
           onChange={handleFileSelect}
           className="hidden"
-          accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.zip,.rar"
+          accept="image/*,video/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.zip,.rar"
         />
         
         {/* Selected file preview */}
         {selectedFile && (
-          <div className="mb-3 p-3 bg-gray-800 rounded-lg border border-gray-700">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <File className="h-5 w-5 text-blue-400" />
-                <div>
-                  <p className="text-sm text-white font-medium">{selectedFile.name}</p>
-                  <p className="text-xs text-gray-400">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-                </div>
-              </div>
-              <div className="flex space-x-2">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleSendFile}
-                  className="text-green-400 hover:bg-green-400/20"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setSelectedFile(null)}
-                  className="text-red-400 hover:bg-red-400/20"
-                >
-                  ×
-                </Button>
-              </div>
-            </div>
+          <div className="mb-3 bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+            {(() => {
+              const isImage = selectedFile.type.startsWith('image/');
+              const isVideo = selectedFile.type.startsWith('video/');
+              
+              if (isImage || isVideo) {
+                return (
+                  <div className="relative">
+                    {/* Media Preview */}
+                    <div className="relative">
+                                             {isImage ? (
+                         <img 
+                           src={selectedFileUrl || ''} 
+                           alt="Preview"
+                           className="w-full h-48 object-cover"
+                         />
+                       ) : (
+                         <video 
+                           src={selectedFileUrl || ''}
+                           className="w-full h-48 object-cover"
+                           controls
+                         />
+                       )}
+                      
+                      {/* Overlay with file info */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                        <p className="text-sm text-white font-medium truncate">{selectedFile.name}</p>
+                        <p className="text-xs text-gray-300">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                    </div>
+                    
+                    {/* Action buttons */}
+                    <div className="flex justify-end space-x-2 p-3">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleSendFile}
+                        className="text-green-400 hover:bg-green-400/20"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleClearSelectedFile}
+                        className="text-red-400 hover:bg-red-400/20"
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  </div>
+                );
+              } else {
+                return (
+                  <div className="flex items-center justify-between p-3">
+                    <div className="flex items-center space-x-3">
+                      <File className="h-5 w-5 text-blue-400" />
+                      <div>
+                        <p className="text-sm text-white font-medium">{selectedFile.name}</p>
+                        <p className="text-xs text-gray-400">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleSendFile}
+                        className="text-green-400 hover:bg-green-400/20"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleClearSelectedFile}
+                        className="text-red-400 hover:bg-red-400/20"
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  </div>
+                );
+              }
+            })()}
           </div>
         )}
 

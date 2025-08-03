@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ArrowLeft, DollarSign, MessageSquare, Upload, X } from "lucide-react";
-import { authenticatedApiRequest } from "@/lib/auth";
+import { authenticatedApiRequest, authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { insertPostSchema } from "@shared/schema";
 import BottomNavigation from "@/components/bottom-navigation";
@@ -45,6 +45,21 @@ export default function CreatePost() {
   const [postType, setPostType] = useState<'investment' | 'community'>('investment');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
+  // Check if user is authenticated
+  const user = authService.getUser();
+  const isAuthenticated = authService.isAuthenticated();
+
+  // Redirect to registration/login if not authenticated
+  if (!isAuthenticated || !user) {
+    toast({
+      title: "Authentication Required",
+      description: "Please log in to create a post",
+      variant: "destructive",
+    });
+    setLocation("/registration");
+    return null;
+  }
+
   const form = useForm<PostFormData>({
     resolver: zodResolver(postSchema),
     defaultValues: {
@@ -66,13 +81,10 @@ export default function CreatePost() {
 
   const createPost = useMutation({
     mutationFn: async (data: PostFormData) => {
-      console.log('Making API call with data:', data);
       const response = await authenticatedApiRequest("POST", "/api/posts", data);
-      console.log('API response:', response);
       return response.json();
     },
     onSuccess: (data) => {
-      console.log('Post created successfully:', data);
       toast({
         title: "Success",
         description: `${postType === 'investment' ? 'Investment opportunity' : 'Community post'} created successfully! It's now live and visible to everyone.`,
@@ -81,7 +93,6 @@ export default function CreatePost() {
       setLocation("/dashboard");
     },
     onError: (error) => {
-      console.error('Post creation failed:', error);
       toast({
         title: "Error",
         description: "Failed to create post. Please try again.",
@@ -90,14 +101,37 @@ export default function CreatePost() {
     },
   });
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      // In a real app, you would upload to a file storage service
-      // For now, we'll just add placeholder URLs
-      const newImages = Array.from(files).map((file, index) => 
-        `placeholder-image-${Date.now()}-${index}.jpg`
-      );
+      const newImages: string[] = [];
+      
+      for (const file of Array.from(files)) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          const response = await authenticatedApiRequest("POST", "/api/upload", formData, {
+            headers: {
+              // Don't set Content-Type, let the browser set it with boundary
+            },
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            newImages.push(result.url);
+          } else {
+            throw new Error('Upload failed');
+          }
+        } catch (error) {
+          toast({
+            title: "Upload Failed",
+            description: `Failed to upload ${file.name}. Please try again.`,
+            variant: "destructive",
+          });
+        }
+      }
+      
       setUploadedImages(prev => [...prev, ...newImages]);
     }
   };
@@ -107,9 +141,6 @@ export default function CreatePost() {
   };
 
   const onSubmit = (data: PostFormData) => {
-    console.log('Form submitted with data:', data);
-    console.log('Post type:', postType);
-    
     // Prepare the post data based on type
     const postData = {
       title: data.title,
@@ -130,7 +161,6 @@ export default function CreatePost() {
       } : {})
     };
     
-    console.log('Sending post data:', postData);
     createPost.mutate(postData);
   };
 
@@ -176,13 +206,7 @@ export default function CreatePost() {
                 <Form {...form}>
                   <form onSubmit={(e) => {
                     e.preventDefault();
-                    console.log('Form submit event triggered');
-                    console.log('Form errors:', form.formState.errors);
-                    console.log('Form values:', form.getValues());
-                    
-                    // Bypass validation temporarily to test
                     const formData = form.getValues();
-                    console.log('Bypassing validation, calling onSubmit directly');
                     onSubmit(formData);
                   }} className="space-y-6">
                     {/* Common fields */}
@@ -414,7 +438,18 @@ export default function CreatePost() {
                         <div className="grid grid-cols-3 gap-4">
                           {uploadedImages.map((image, index) => (
                             <div key={index} className="relative">
-                              <div className="w-full h-24 bg-gray-700 rounded-lg flex items-center justify-center">
+                              <img 
+                                src={image} 
+                                alt={`Preview ${index + 1}`}
+                                className="w-full h-24 object-cover rounded-lg"
+                                onError={(e) => {
+                                  // Fallback to placeholder if image fails to load
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                              {/* Fallback placeholder */}
+                              <div className="w-full h-24 bg-gray-700 rounded-lg flex items-center justify-center hidden">
                                 <span className="text-xs text-gray-400">Image {index + 1}</span>
                               </div>
                               <Button
@@ -444,7 +479,6 @@ export default function CreatePost() {
                       <Button 
                         type="submit" 
                         disabled={createPost.isPending}
-                        onClick={() => console.log('Submit button clicked')}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
                         {createPost.isPending 
