@@ -55,7 +55,7 @@ export function useFirstTimeGuidance() {
           setShowGuidance(shouldShow);
         }
       } catch (error) {
-        console.error('Error fetching user guidance status:', error);
+        // Error fetching user guidance status handled silently
         // Fallback to cached user data
         const hasCompletedOnboarding = user.isOnboardingComplete === true;
         const hasSeenGuidance = user.hasSeenFirstTimeGuidance === true;
@@ -105,7 +105,7 @@ export function useFirstTimeGuidance() {
           localStorage.setItem('user', JSON.stringify(updatedUser));
         }
       } catch (error) {
-        console.error('Error marking guidance as seen:', error);
+        // Error marking guidance as seen handled silently
         // Fallback to localStorage
         setShowGuidance(false);
       }
@@ -142,7 +142,7 @@ export function useFirstTimeGuidance() {
           localStorage.setItem('user', JSON.stringify(updatedUser));
         }
       } catch (error) {
-        console.error('Error resetting guidance:', error);
+        // Error resetting guidance handled silently
         // Fallback to localStorage
         setShowGuidance(true);
       }

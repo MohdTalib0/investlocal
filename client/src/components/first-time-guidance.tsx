@@ -188,7 +188,7 @@ export default function FirstTimeGuidance({ onClose, isVisible }: FirstTimeGuida
         localStorage.setItem('user', JSON.stringify(updatedUser));
       }
     } catch (error) {
-      console.error('Error updating completed tips:', error);
+      // Error updating completed tips handled silently
     }
   };
 
@@ -248,7 +248,7 @@ export default function FirstTimeGuidance({ onClose, isVisible }: FirstTimeGuida
         localStorage.setItem('user', JSON.stringify(updatedUser));
       }
     } catch (error) {
-      console.error('Error skipping all tips:', error);
+      // Error skipping all tips handled silently
     }
     
     onClose();

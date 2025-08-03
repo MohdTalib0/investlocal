@@ -11,7 +11,7 @@ export function verifyToken(token: string): TokenPayload | null {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as TokenPayload;
     return decoded;
   } catch (error) {
-    console.error('Token verification error:', error);
+    // Token verification error handled silently
     return null;
   }
 } 

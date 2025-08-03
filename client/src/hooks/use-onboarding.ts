@@ -58,7 +58,7 @@ export function useOnboarding() {
              // Check if user has completed onboarding (from database)
              const hasCompletedOnboarding = freshUserData.isOnboardingComplete === true;
 
-             console.log('Onboarding status check:', {
+             // Onboarding status check
                hasBio,
                hasPreferences,
                hasCompletedOnboarding,
@@ -95,7 +95,7 @@ export function useOnboarding() {
              });
            }
          } catch (error) {
-           console.error('Error fetching fresh user data:', error);
+           // Error fetching fresh user data handled silently
            // Fallback to cached user data
            const hasBio = user.bio && user.bio.length > 10;
            let hasPreferences = false;
@@ -116,7 +116,7 @@ export function useOnboarding() {
            });
          }
        } catch (error) {
-         console.error('Error checking onboarding status:', error);
+         // Error checking onboarding status handled silently
        } finally {
          setIsLoading(false);
        }
@@ -155,7 +155,7 @@ export function useOnboarding() {
           localStorage.setItem('user', JSON.stringify(updatedUser));
         }
       } catch (error) {
-        console.error('Error marking onboarding as completed:', error);
+        // Error marking onboarding as completed handled silently
       }
     }
   };

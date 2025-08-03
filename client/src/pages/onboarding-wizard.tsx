@@ -176,7 +176,7 @@ export default function OnboardingWizardPage() {
         await completeOnboarding.mutateAsync();
         setCurrentStep(4);
       } catch (error) {
-        console.error('Onboarding completion error:', error);
+        // Onboarding completion error handled silently
         toast({
           title: "Error completing setup",
           description: "Please try again.",

@@ -74,7 +74,7 @@ export default function RegistrationPage() {
       });
       setLocation("/onboarding-wizard");
     } catch (error) {
-      console.error("Registration error:", error);
+      // Registration error handled silently
       toast({
         title: "Registration failed",
         description: error instanceof Error ? error.message : "Please try again",
@@ -95,7 +95,7 @@ export default function RegistrationPage() {
       });
       setLocation("/dashboard");
     } catch (error) {
-      console.error("Login error:", error);
+      // Login error handled silently
       toast({
         title: "Login failed",
         description: error instanceof Error ? error.message : "Please check your credentials",

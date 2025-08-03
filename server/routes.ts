@@ -206,7 +206,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
           sessionToken
         });
       } catch (sessionError) {
-        console.error("Session creation error:", sessionError);
+        // Session creation error handled silently
         // Fallback: return response without session for now
         res.json({ 
           user: { 
@@ -220,7 +220,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         });
       }
     } catch (error) {
-      console.error("Registration error:", error);
+      // Registration error handled silently
       res.status(400).json({ message: "Registration failed" });
     }
   });
@@ -274,7 +274,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
           sessionToken
         });
       } catch (sessionError) {
-        console.error("Session creation error:", sessionError);
+        // Session creation error handled silently
         // Fallback: return response without session for now
         res.json({ 
           user: { 
@@ -291,7 +291,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         });
       }
     } catch (error) {
-      console.error("Login error:", error);
+      // Login error handled silently
       res.status(400).json({ message: "Login failed" });
     }
   });
@@ -333,7 +333,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         completedFeatureIntros: user.completedFeatureIntros,
       });
     } catch (error) {
-      console.error("Get user error:", error);
+      // Get user error handled silently
       res.status(500).json({ message: "Failed to get user" });
     }
   });
@@ -373,10 +373,8 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         completedFeatureIntros: user.completedFeatureIntros,
       });
     } catch (error) {
-      console.error("Update user error:", error);
-      console.error("Update data:", req.body);
-      console.error("User ID:", req.user.userId);
-      res.status(500).json({ message: "Failed to update user", error: error instanceof Error ? error.message : String(error) });
+      // Update user error handled silently
+      res.status(500).json({ message: "Failed to update user" });
     }
   });
 
@@ -386,7 +384,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const sessions = await storage.getActiveUserSessions(req.user.userId);
       res.json(sessions);
     } catch (error) {
-      console.error("Get sessions error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get sessions" });
     }
   });
@@ -397,7 +395,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       await storage.deactivateSession(sessionId);
       res.json({ message: "Session deactivated successfully" });
     } catch (error) {
-      console.error("Deactivate session error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to deactivate session" });
     }
   });
@@ -407,7 +405,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       await storage.deactivateAllUserSessions(req.user.userId);
       res.json({ message: "All sessions deactivated successfully" });
     } catch (error) {
-      console.error("Deactivate all sessions error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to deactivate sessions" });
     }
   });
@@ -434,7 +432,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         createdAt: user.createdAt
       });
     } catch (error) {
-      console.error("Get user profile error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get user profile" });
     }
   });
@@ -451,7 +449,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const listing = await storage.createBusinessListing(listingData);
       res.json(listing);
     } catch (error) {
-      console.error("Create listing error:", error);
+      // Error handled silently
       res.status(400).json({ message: "Failed to create listing" });
     }
   });
@@ -470,7 +468,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const listings = await storage.getBusinessListings(filters);
       res.json(listings);
     } catch (error) {
-      console.error("Get listings error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get listings" });
     }
   });
@@ -487,7 +485,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       
       res.json(listing);
     } catch (error) {
-      console.error("Get listing error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get listing" });
     }
   });
@@ -510,7 +508,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const updatedListing = await storage.updateBusinessListing(req.params.id, req.body);
       res.json(updatedListing);
     } catch (error) {
-      console.error("Update listing error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to update listing" });
     }
   });
@@ -533,7 +531,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       await storage.deleteBusinessListing(req.params.id);
       res.json({ message: "Listing deleted successfully" });
     } catch (error) {
-      console.error("Delete listing error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to delete listing" });
     }
   });
@@ -543,7 +541,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const listings = await storage.getUserListings(req.user.userId);
       res.json(listings);
     } catch (error) {
-      console.error("Get user listings error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get user listings" });
     }
   });
@@ -568,7 +566,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const post = await storage.createPost(postData);
       res.json(post);
     } catch (error) {
-      console.error("Create post error:", error);
+      // Error handled silently
       res.status(400).json({ message: "Failed to create post" });
     }
   });
@@ -577,10 +575,10 @@ export async function registerRoutes(app: Express, notificationService?: any): P
   app.get("/api/debug/users", async (req, res) => {
     try {
       const allUsers = await db.select().from(users);
-      console.log('All users in database:', allUsers);
+      // Log removed for production
       res.json(allUsers);
     } catch (error) {
-      console.error("Debug users error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get users" });
     }
   });
@@ -619,7 +617,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       
       res.json(postsWithUsers);
     } catch (error) {
-      console.error("Get posts error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get posts" });
     }
   });
@@ -649,7 +647,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       
       res.json(postWithAuthor);
     } catch (error) {
-      console.error("Get post error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get post" });
     }
   });
@@ -672,7 +670,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const updatedPost = await storage.updatePost(req.params.id, req.body);
       res.json(updatedPost);
     } catch (error) {
-      console.error("Update post error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to update post" });
     }
   });
@@ -695,7 +693,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       await storage.deletePost(req.params.id);
       res.json({ message: "Post deleted successfully" });
     } catch (error) {
-      console.error("Delete post error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to delete post" });
     }
   });
@@ -705,7 +703,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const posts = await storage.getUserPosts(req.user.userId);
       res.json(posts);
     } catch (error) {
-      console.error("Get user posts error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get user posts" });
     }
   });
@@ -716,7 +714,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const posts = await storage.getUserPosts(userId);
       res.json(posts);
     } catch (error) {
-      console.error("Get user posts error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get user posts" });
     }
   });
@@ -746,13 +744,13 @@ export async function registerRoutes(app: Express, notificationService?: any): P
           }
         }
       } catch (notificationError) {
-        console.error("Like notification error:", notificationError);
+        // Error handled silently
         // Don't fail the like if notification fails
       }
       
       res.json({ message: "Post liked successfully" });
     } catch (error) {
-      console.error("Like post error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to like post" });
     }
   });
@@ -762,7 +760,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       await storage.unlikePost(req.user.userId, req.params.id);
       res.json({ message: "Post unliked successfully" });
     } catch (error) {
-      console.error("Unlike post error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to unlike post" });
     }
   });
@@ -772,7 +770,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const likes = await storage.getPostLikesWithUsers(req.params.id);
       res.json(likes);
     } catch (error) {
-      console.error("Get post likes error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get post likes" });
     }
   });
@@ -810,13 +808,13 @@ export async function registerRoutes(app: Express, notificationService?: any): P
           }
         }
       } catch (notificationError) {
-        console.error("Comment notification error:", notificationError);
+        // Error handled silently
         // Don't fail the comment if notification fails
       }
       
       res.json(comment);
     } catch (error) {
-      console.error("Create comment error:", error);
+      // Error handled silently
       res.status(400).json({ message: "Failed to create comment" });
     }
   });
@@ -826,7 +824,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const comments = await storage.getPostCommentsWithUsers(req.params.id);
       res.json(comments);
     } catch (error) {
-      console.error("Get post comments error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get post comments" });
     }
   });
@@ -859,13 +857,13 @@ export async function registerRoutes(app: Express, notificationService?: any): P
           }
         }
       } catch (notificationError) {
-        console.error("Interest notification error:", notificationError);
+        // Error handled silently
         // Don't fail the interest if notification fails
       }
       
       res.json(interest);
     } catch (error) {
-      console.error("Express interest error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to express interest" });
     }
   });
@@ -875,7 +873,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const interests = await storage.getPostInterests(req.params.id);
       res.json(interests);
     } catch (error) {
-      console.error("Get post interests error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get post interests" });
     }
   });
@@ -885,7 +883,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       await storage.deleteComment(req.params.id);
       res.json({ message: "Comment deleted successfully" });
     } catch (error) {
-      console.error("Delete comment error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to delete comment" });
     }
   });
@@ -923,13 +921,13 @@ export async function registerRoutes(app: Express, notificationService?: any): P
           }
         }
       } catch (notificationError) {
-        console.error("Notification error:", notificationError);
+        // Error handled silently
         // Don't fail the message send if notification fails
       }
       
       res.json(message);
     } catch (error) {
-      console.error("Create message error:", error);
+      // Error handled silently
       res.status(400).json({ message: "Failed to send message" });
     }
   });
@@ -939,7 +937,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const conversations = await storage.getUserConversations(req.user.userId);
       res.json(conversations);
     } catch (error) {
-      console.error("Get conversations error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get conversations" });
     }
   });
@@ -949,7 +947,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const messages = await storage.getConversation(req.user.userId, req.params.userId);
       res.json(messages);
     } catch (error) {
-      console.error("Get conversation error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get conversation" });
     }
   });
@@ -959,7 +957,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       await storage.markMessagesAsRead(req.params.userId, req.user.userId);
       res.json({ message: "Messages marked as read" });
     } catch (error) {
-      console.error("Mark messages read error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to mark messages as read" });
     }
   });
@@ -1012,7 +1010,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
           }
         }
       } catch (notificationError) {
-        console.error("Notification error:", notificationError);
+        // Error handled silently
       }
       
       res.json({
@@ -1026,7 +1024,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         }
       });
     } catch (error) {
-      console.error("File upload error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to upload file" });
     }
   });
@@ -1049,7 +1047,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         mimetype: req.file.mimetype
       });
     } catch (error) {
-      console.error("File upload error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to upload file" });
     }
   });
@@ -1071,7 +1069,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const interest = await storage.createInterest(interestData);
       res.json(interest);
     } catch (error) {
-      console.error("Create interest error:", error);
+      // Error handled silently
       res.status(400).json({ message: "Failed to express interest" });
     }
   });
@@ -1081,7 +1079,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const interests = await storage.getListingInterests(req.params.id);
       res.json(interests);
     } catch (error) {
-      console.error("Get listing interests error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get interests" });
     }
   });
@@ -1126,7 +1124,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         res.json([]);
       }
     } catch (error) {
-      console.error("Get user interests error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get user interests" });
     }
   });
@@ -1153,7 +1151,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       await storage.deleteInterest(interestId);
       res.json({ message: "Interest withdrawn successfully" });
     } catch (error) {
-      console.error("Withdraw interest error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to withdraw interest" });
     }
   });
@@ -1194,7 +1192,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       
       res.json(stats);
     } catch (error) {
-      console.error("Get investment stats error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get investment stats" });
     }
   });
@@ -1276,7 +1274,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         res.json(validSavedPosts);
       }
     } catch (error) {
-      console.error("Get saved opportunities error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get saved opportunities" });
     }
   });
@@ -1305,7 +1303,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         }
       }
     } catch (error) {
-      console.error("Remove from saved error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to remove item from saved list" });
     }
   });
@@ -1377,7 +1375,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         res.json(analytics);
       }
     } catch (error) {
-      console.error("Get analytics error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get analytics" });
     }
   });
@@ -1393,7 +1391,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const rating = await storage.createRating(ratingData);
       res.json(rating);
     } catch (error) {
-      console.error("Create rating error:", error);
+      // Error handled silently
       res.status(400).json({ message: "Failed to create rating" });
     }
   });
@@ -1403,7 +1401,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const ratings = await storage.getUserRatings(req.params.id);
       res.json(ratings);
     } catch (error) {
-      console.error("Get user ratings error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get user ratings" });
     }
   });
@@ -1419,7 +1417,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const report = await storage.createReport(reportData);
       res.json(report);
     } catch (error) {
-      console.error("Create report error:", error);
+      // Error handled silently
       res.status(400).json({ message: "Failed to create report" });
     }
   });
@@ -1435,7 +1433,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const stats = await storage.getSystemStats();
       res.json(stats);
     } catch (error) {
-      console.error("Get admin stats error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get admin stats" });
     }
   });
@@ -1450,7 +1448,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const listings = await storage.getPendingListings();
       res.json(listings);
     } catch (error) {
-      console.error("Get pending listings error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get pending listings" });
     }
   });
@@ -1465,7 +1463,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const users = await storage.getPendingUsers();
       res.json(users);
     } catch (error) {
-      console.error("Get pending users error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get pending users" });
     }
   });
@@ -1480,7 +1478,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       const reports = await storage.getReports(req.query.status as string);
       res.json(reports);
     } catch (error) {
-      console.error("Get reports error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to get reports" });
     }
   });
@@ -1518,7 +1516,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         }
       });
     } catch (error) {
-      console.error("Start call error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to start call" });
     }
   });
@@ -1552,7 +1550,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         }
       });
     } catch (error) {
-      console.error("Call response error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to respond to call" });
     }
   });
@@ -1575,7 +1573,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       
       res.json({ message: "Call ended" });
     } catch (error) {
-      console.error("End call error:", error);
+      // Error handled silently
       res.status(500).json({ message: "Failed to end call" });
     }
   });

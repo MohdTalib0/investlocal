@@ -54,7 +54,7 @@ export function useNotifications() {
   // Request browser notification permission
   const requestPermission = useCallback(async () => {
     if (!('Notification' in window)) {
-      console.log('This browser does not support notifications');
+      // Browser does not support notifications
       return false;
     }
 
@@ -73,7 +73,7 @@ export function useNotifications() {
   // Play notification sound
   const playNotificationSound = useCallback(() => {
     if (settings.sound && audioRef.current) {
-      audioRef.current.play().catch(console.error);
+              audioRef.current.play().catch(() => {});
     }
   }, [settings.sound]);
 
@@ -164,7 +164,7 @@ export function useNotifications() {
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
-        console.log('WebSocket connected for notifications');
+        // WebSocket connected for notifications
         // Send authentication
         wsRef.current?.send(JSON.stringify({
           type: 'auth',
@@ -225,17 +225,17 @@ export function useNotifications() {
             // Handle call ended
           }
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          // Error parsing WebSocket message handled silently
         }
       };
 
       wsRef.current.onerror = (error) => {
-        console.warn('WebSocket connection failed - server may not be running');
+                  // WebSocket connection failed - server may not be running
         // Don't log the full error object to avoid console spam
       };
 
       wsRef.current.onclose = (event) => {
-        console.log('WebSocket disconnected');
+                  // WebSocket disconnected
         // Only reconnect if it wasn't a clean close and we're still enabled
         if (event.code !== 1000 && settings.enabled) {
           setTimeout(() => {
@@ -244,7 +244,7 @@ export function useNotifications() {
         }
       };
     } catch (error) {
-      console.warn('Failed to create WebSocket connection:', error);
+                // Failed to create WebSocket connection handled silently
     }
   }, [handleNewMessage, settings.enabled]);
 

@@ -39,7 +39,7 @@ class NotificationService {
 
   private setupWebSocket() {
     this.wss.on('connection', (ws: AuthenticatedWebSocket) => {
-      console.log('WebSocket client connected');
+      // WebSocket client connected
 
       ws.on('message', (data: Buffer) => {
         try {
@@ -49,19 +49,19 @@ class NotificationService {
             this.handleAuthentication(ws, message);
           }
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          // Error parsing WebSocket message handled silently
         }
       });
 
       ws.on('close', () => {
         if (ws.userId) {
           this.clients.delete(ws.userId);
-          console.log(`Client ${ws.userId} disconnected`);
+          // Client disconnected
         }
       });
 
       ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
+        // WebSocket error handled silently
       });
     });
   }
@@ -74,7 +74,7 @@ class NotificationService {
         ws.userId = message.userId;
         ws.isAuthenticated = true;
         this.clients.set(message.userId, ws);
-        console.log(`Client ${message.userId} authenticated`);
+        // Client authenticated
         
         // Send confirmation
         ws.send(JSON.stringify({
@@ -89,7 +89,7 @@ class NotificationService {
         ws.close();
       }
     } catch (error) {
-      console.error('Authentication error:', error);
+              // Authentication error handled silently
       ws.send(JSON.stringify({
         type: 'auth_error',
         message: 'Authentication failed'
@@ -103,9 +103,9 @@ class NotificationService {
     if (client && client.isAuthenticated && client.readyState === WebSocket.OPEN) {
       try {
         client.send(JSON.stringify(notification));
-        console.log(`Notification sent to ${receiverId}`);
+        // Notification sent
       } catch (error) {
-        console.error('Error sending notification:', error);
+                  // Error sending notification handled silently
         // Remove disconnected client
         this.clients.delete(receiverId);
       }
@@ -117,9 +117,9 @@ class NotificationService {
     if (client && client.isAuthenticated && client.readyState === WebSocket.OPEN) {
       try {
         client.send(JSON.stringify(callMessage));
-        console.log(`Call notification sent to ${receiverId}: ${callMessage.type}`);
+        // Call notification sent
       } catch (error) {
-        console.error('Error sending call notification:', error);
+                  // Error sending call notification handled silently
         // Remove disconnected client
         this.clients.delete(receiverId);
       }
@@ -132,7 +132,7 @@ class NotificationService {
         try {
           client.send(JSON.stringify(message));
         } catch (error) {
-          console.error(`Error broadcasting to ${userId}:`, error);
+          // Error broadcasting handled silently
           this.clients.delete(userId);
         }
       }

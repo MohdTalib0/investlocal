@@ -273,7 +273,7 @@ export default function ChatPage() {
         variant: "default",
       });
     } catch (error) {
-      console.error('Start call error:', error);
+      // Start call error handled silently
       toast({
         title: "Call Failed",
         description: "Failed to start call. User may be offline.",

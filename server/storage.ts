@@ -128,14 +128,13 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     try {
       const [user] = await db.select().from(users).where(eq(users.id, id));
-      console.log(`Getting user ${id}:`, user);
+      // Getting user
       if (user) {
-        console.log(`User ${id} keys:`, Object.keys(user));
-        console.log(`User ${id} fullName:`, user.fullName);
+                  // User data retrieved
       }
       return user || undefined;
     } catch (error) {
-      console.error(`Error getting user ${id}:`, error);
+              // Error getting user handled silently
       return undefined;
     }
   }
@@ -291,11 +290,11 @@ export class DatabaseStorage implements IStorage {
 
   async getPostCommentsWithUsers(postId: string): Promise<any[]> {
     try {
-      console.log(`Getting comments for post ${postId}`);
+      // Getting comments for post
       
       // First, let's check if there are any comments for this post
       const basicComments = await db.select().from(comments).where(eq(comments.postId, postId));
-      console.log(`Found ${basicComments.length} basic comments for post ${postId}`);
+              // Found basic comments for post
       
       if (basicComments.length === 0) {
         return [];
@@ -322,10 +321,10 @@ export class DatabaseStorage implements IStorage {
         .where(eq(comments.postId, postId))
         .orderBy(desc(comments.createdAt));
       
-      console.log(`Returning ${commentsWithUsers.length} comments with users for post ${postId}`);
+              // Returning comments with users for post
       return commentsWithUsers;
     } catch (error) {
-      console.error(`Error getting comments with users for post ${postId}:`, error);
+              // Error getting comments with users for post handled silently
       // Fallback to basic comments without user data
       try {
         const basicComments = await db.select().from(comments).where(eq(comments.postId, postId));
@@ -334,7 +333,7 @@ export class DatabaseStorage implements IStorage {
           user: null
         }));
       } catch (fallbackError) {
-        console.error(`Fallback error for post ${postId}:`, fallbackError);
+                  // Fallback error for post handled silently
         return [];
       }
     }
