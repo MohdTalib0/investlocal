@@ -573,6 +573,7 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         fundingMax: req.query.fundingMax ? parseInt(req.query.fundingMax as string) : undefined,
         search: req.query.search as string,
         status: req.query.status as string,
+        authorId: req.query.authorId as string,
       };
       
       const posts = await storage.getPosts(filters);
@@ -608,10 +609,23 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         return res.status(404).json({ message: "Post not found" });
       }
       
+      // Get author data
+      const author = await storage.getUser(post.authorId);
+      const postWithAuthor = {
+        ...post,
+        author: author ? {
+          id: author.id,
+          fullName: author.fullName,
+          email: author.email,
+          userType: author.userType,
+          avatar: author.avatar,
+        } : null
+      };
+      
       // Increment view count
       await storage.updatePost(req.params.id, { views: (post.views || 0) + 1 });
       
-      res.json(post);
+      res.json(postWithAuthor);
     } catch (error) {
       console.error("Get post error:", error);
       res.status(500).json({ message: "Failed to get post" });
@@ -674,9 +688,46 @@ export async function registerRoutes(app: Express, notificationService?: any): P
     }
   });
 
+  app.get("/api/users/:userId/posts", async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const posts = await storage.getUserPosts(userId);
+      res.json(posts);
+    } catch (error) {
+      console.error("Get user posts error:", error);
+      res.status(500).json({ message: "Failed to get user posts" });
+    }
+  });
+
   app.post("/api/posts/:id/like", authenticateToken, async (req: any, res) => {
     try {
       await storage.likePost(req.user.userId, req.params.id);
+      
+      // Send notification to post author
+      try {
+        const post = await storage.getPost(req.params.id);
+        const liker = await storage.getUser(req.user.userId);
+        
+        if (post && liker && post.authorId !== req.user.userId) {
+          const notificationService = (req.app as any).notificationService;
+          
+          if (notificationService) {
+            notificationService.sendNotification(post.authorId, {
+              type: 'post_liked',
+              postId: req.params.id,
+              senderId: req.user.userId,
+              senderName: liker.fullName || liker.email,
+              content: `liked your post`,
+              timestamp: new Date().toISOString(),
+              receiverId: post.authorId,
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error("Like notification error:", notificationError);
+        // Don't fail the like if notification fails
+      }
+      
       res.json({ message: "Post liked successfully" });
     } catch (error) {
       console.error("Like post error:", error);
@@ -714,6 +765,33 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       });
       
       const comment = await storage.createComment(commentData);
+      
+      // Send notification to post author
+      try {
+        const post = await storage.getPost(req.params.id);
+        const commenter = await storage.getUser(req.user.userId);
+        
+        if (post && commenter && post.authorId !== req.user.userId) {
+          const notificationService = (req.app as any).notificationService;
+          
+          if (notificationService) {
+            notificationService.sendNotification(post.authorId, {
+              type: 'post_commented',
+              postId: req.params.id,
+              commentId: comment.id,
+              senderId: req.user.userId,
+              senderName: commenter.fullName || commenter.email,
+              content: `commented: "${req.body.content.substring(0, 50)}${req.body.content.length > 50 ? '...' : ''}"`,
+              timestamp: comment.createdAt,
+              receiverId: post.authorId,
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error("Comment notification error:", notificationError);
+        // Don't fail the comment if notification fails
+      }
+      
       res.json(comment);
     } catch (error) {
       console.error("Create comment error:", error);
@@ -728,6 +806,55 @@ export async function registerRoutes(app: Express, notificationService?: any): P
     } catch (error) {
       console.error("Get post comments error:", error);
       res.status(500).json({ message: "Failed to get post comments" });
+    }
+  });
+
+  app.post("/api/posts/:id/interests", authenticateToken, async (req: any, res) => {
+    try {
+      const interest = await storage.createInterest({
+        investorId: req.user.userId,
+        postId: req.params.id
+      });
+      
+      // Send notification to post author
+      try {
+        const post = await storage.getPost(req.params.id);
+        const investor = await storage.getUser(req.user.userId);
+        
+        if (post && investor && post.authorId !== req.user.userId) {
+          const notificationService = (req.app as any).notificationService;
+          
+          if (notificationService) {
+            notificationService.sendNotification(post.authorId, {
+              type: 'post_commented', // Using comment type for interest
+              postId: req.params.id,
+              senderId: req.user.userId,
+              senderName: investor.fullName || investor.email,
+              content: `expressed interest in your investment post`,
+              timestamp: interest.createdAt,
+              receiverId: post.authorId,
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error("Interest notification error:", notificationError);
+        // Don't fail the interest if notification fails
+      }
+      
+      res.json(interest);
+    } catch (error) {
+      console.error("Express interest error:", error);
+      res.status(500).json({ message: "Failed to express interest" });
+    }
+  });
+
+  app.get("/api/posts/:id/interests", async (req, res) => {
+    try {
+      const interests = await storage.getPostInterests(req.params.id);
+      res.json(interests);
+    } catch (error) {
+      console.error("Get post interests error:", error);
+      res.status(500).json({ message: "Failed to get post interests" });
     }
   });
 
@@ -939,8 +1066,43 @@ export async function registerRoutes(app: Express, notificationService?: any): P
 
   app.get("/api/users/me/interests", authenticateToken, async (req: any, res) => {
     try {
-      const interests = await storage.getUserInterests(req.user.userId);
-      res.json(interests);
+      const user = await storage.getUser(req.user.userId);
+      
+      if (user?.userType === 'investor') {
+        // For investors, return their own interests
+        const interests = await storage.getUserInterests(req.user.userId);
+        res.json(interests);
+      } else if (user?.userType === 'entrepreneur') {
+        // For entrepreneurs, return interests in their posts/listings
+        const posts = await storage.getUserPosts(req.user.userId);
+        const listings = await storage.getUserListings(req.user.userId);
+        
+        // Get interests for all posts
+        const postInterests = await Promise.all(
+          posts.map(async (post: any) => {
+            const interests = await storage.getPostInterests(post.id);
+            return interests;
+          })
+        );
+        
+        // Get interests for all listings
+        const listingInterests = await Promise.all(
+          listings.map(async (listing: any) => {
+            const interests = await storage.getListingInterests(listing.id);
+            return interests;
+          })
+        );
+        
+        // Flatten and combine all interests
+        const allInterests = [
+          ...postInterests.flat(),
+          ...listingInterests.flat()
+        ];
+        
+        res.json(allInterests);
+      } else {
+        res.json([]);
+      }
     } catch (error) {
       console.error("Get user interests error:", error);
       res.status(500).json({ message: "Failed to get user interests" });

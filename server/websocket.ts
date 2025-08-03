@@ -8,13 +8,15 @@ interface AuthenticatedWebSocket extends WebSocket {
 }
 
 interface NotificationMessage {
-  type: 'new_message';
-  messageId: string;
+  type: 'new_message' | 'post_liked' | 'post_commented' | 'comment_replied';
+  messageId?: string;
+  postId?: string;
+  commentId?: string;
   senderId: string;
   senderName: string;
   content: string;
   timestamp: string;
-  conversationId: string;
+  conversationId?: string;
   receiverId: string;
 }
 

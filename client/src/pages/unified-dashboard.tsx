@@ -47,6 +47,17 @@ export default function UnifiedDashboard() {
     return `${Math.floor(diffInSeconds / 31536000)}y ago`;
   };
 
+  const formatAmount = (amount: number): string => {
+    if (amount >= 1000000000) {
+      return `${(amount / 1000000000).toFixed(1)}B`;
+    } else if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(1)}M`;
+    } else if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(1)}K`;
+    }
+    return amount.toString();
+  };
+
   // Fetch posts (investment and community)
   const { data: posts = [], isLoading: postsLoading } = useQuery({
     queryKey: ["/api/posts", activeTab],
@@ -99,6 +110,26 @@ export default function UnifiedDashboard() {
         }
       }
       return commentsData;
+    },
+    enabled: posts.length > 0,
+  });
+
+  // Fetch interests for posts
+  const { data: postInterests = {} } = useQuery({
+    queryKey: ["post-interests"],
+    queryFn: async () => {
+      const interestsData: { [postId: string]: any[] } = {};
+      for (const post of posts) {
+        try {
+          const response = await fetch(`/api/posts/${post.id}/interests`);
+          if (response.ok) {
+            interestsData[post.id] = await response.json();
+          }
+        } catch (error) {
+          //console.error(`Failed to fetch interests for post ${post.id}:`, error);
+        }
+      }
+      return interestsData;
     },
     enabled: posts.length > 0,
   });
@@ -190,6 +221,41 @@ export default function UnifiedDashboard() {
     },
   });
 
+  // Express interest mutation
+  const expressInterestMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      const token = authService.getToken();
+      const response = await fetch("/api/interests", {
+        method: "POST",
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          postId: postId,
+          message: "I'm interested in learning more about this investment opportunity.",
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to express interest');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["post-interests"] });
+      toast({
+        title: "Interest expressed!",
+        description: "The entrepreneur has been notified of your interest.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to express interest",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
   const categories = ["All", "Tech Startups", "Food & Beverage", "Retail", "Education", "Healthcare", "Manufacturing", "Agriculture", "Services"];
 
   // Filter function for posts
@@ -204,6 +270,10 @@ export default function UnifiedDashboard() {
       postId, 
       action: isLiked ? 'unlike' : 'like' 
     });
+  };
+
+  const handleInterest = (postId: string) => {
+    expressInterestMutation.mutate(postId);
   };
 
   const handleComment = (postId: string) => {
@@ -298,6 +368,13 @@ export default function UnifiedDashboard() {
   };
 
   const InvestmentPostCard = ({ post }: { post: Post }) => {
+    const isLiked = postLikes[post.id]?.some((like: any) => like.userId === user?.id);
+    const likeCount = postLikes[post.id]?.length || 0;
+    const [showFullContent, setShowFullContent] = useState(false);
+    
+    const shouldTruncate = post.content.length > 150;
+    const displayContent = showFullContent ? post.content : post.content.substring(0, 150);
+    
     // Get author name from post data or use fallback
     let authorName = 'Anonymous User';
     
@@ -321,36 +398,39 @@ export default function UnifiedDashboard() {
 
     return (
     <Card 
-        className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-900 border-gray-700 hover:border-gray-600"
+        className="cursor-pointer hover:shadow-xl transition-all duration-300 bg-gray-900 border-gray-700 hover:border-blue-500/30 hover:bg-gray-800/50"
       onClick={() => setLocation(`/post/${post.id}`)}
     >
       <CardHeader className="pb-3">
-          <div className="flex items-start space-x-3">
-            {/* User Avatar */}
-            <div className="flex-shrink-0">
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              onClick={() => {
                   setLocation(`/user?id=${post.authorId}`);
                 }}
-                className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm hover:scale-105 transition-transform cursor-pointer"
+              className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-lg hover:scale-105 transition-transform cursor-pointer shadow-lg"
               >
                 {authorInitial}
-              </button>
             </div>
-            
             <div className="flex-1">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-                  <CardTitle className="text-lg mb-1 text-white">{post.title || 'Investment Opportunity'}</CardTitle>
-                  <CardDescription className="text-sm text-gray-400">
-              {post.content.substring(0, 120)}...
-            </CardDescription>
+              <button
+                onClick={() => {
+                  setLocation(`/user?id=${post.authorId}`);
+                }}
+                className="text-blue-400 text-sm font-medium hover:text-blue-300 transition-colors cursor-pointer"
+              >
+                {authorName}
+              </button>
+              <p className="text-gray-400 text-xs">
+                {post.author?.userType === 'entrepreneur' ? 'Entrepreneur' : 'Investor'} • {timeAgo}
+              </p>
           </div>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="default" className="bg-blue-600">
-                    Investment
+            {post.category && (
+              <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
+                {post.category}
           </Badge>
+            )}
+          </div>
                   <DropdownMenu open={openDropdown === post.id} onOpenChange={(open) => setOpenDropdown(open ? post.id : null)}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
@@ -407,74 +487,437 @@ export default function UnifiedDashboard() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </div>
-              
-              {/* Author Info */}
-              <div className="mt-2">
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLocation(`/user?id=${post.authorId}`);
-                  }}
-                  className="text-blue-400 text-sm font-medium hover:text-blue-300 transition-colors cursor-pointer"
-                >
-                  {authorName}
-                </button>
-                <p className="text-gray-400 text-xs">
-                  {post.author?.userType === 'entrepreneur' ? 'Entrepreneur' : 'Investor'} • {timeAgo}
-                </p>
-              </div>
-            </div>
+        
+        <div className="mt-3">
+          <CardTitle className="text-xl mb-2 text-white font-bold">{post.title || 'Investment Opportunity'}</CardTitle>
+          <CardDescription className="text-sm text-gray-300 leading-relaxed">
+            {displayContent}
+            {shouldTruncate && !showFullContent && '...'}
+            {shouldTruncate && !showFullContent && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowFullContent(true);
+                }}
+                className="text-blue-400 hover:text-blue-300 font-medium ml-1 cursor-pointer"
+              >
+                Show more
+              </button>
+            )}
+            {shouldTruncate && showFullContent && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowFullContent(false);
+                }}
+                className="text-blue-400 hover:text-blue-300 font-medium ml-1 cursor-pointer"
+              >
+                Show less
+              </button>
+            )}
+          </CardDescription>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
-              <Heart className="h-4 w-4" />
-              <span>{post.likes || 0}</span>
-            </div>
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-4 w-4" />
-                <span>₹{post.fundingMin?.toLocaleString()}-{post.fundingMax?.toLocaleString()}</span>
-              </div>
+        <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
+          <div className="flex items-center gap-1 bg-green-900/30 px-2 py-1 rounded-full border border-green-500/20">
+            <DollarSign className="h-3 w-3 text-green-400" />
+            <span className="font-medium text-green-300 text-xs">₹{formatAmount(post.fundingMin || 0)}-{formatAmount(post.fundingMax || 0)}</span>
           </div>
-          <span>{post.createdAt ? new Date(post.createdAt).toLocaleDateString() : ''}</span>
-        </div>
-        
-        {/* Post Images */}
+          {post.expectedRoi && (
+            <div className="flex items-center gap-1 bg-blue-900/30 px-2 py-1 rounded-full border border-blue-500/20">
+              <svg className="h-3 w-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              <span className="font-medium text-blue-300 text-xs">{post.expectedRoi} ROI</span>
+            </div>
+          )}
+          {post.teamSize && (
+            <div className="flex items-center gap-1 bg-purple-900/30 px-2 py-1 rounded-full border border-purple-500/20">
+              <svg className="h-3 w-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+              </svg>
+              <span className="font-medium text-purple-300 text-xs">{post.teamSize} Team</span>
+            </div>
+          )}
+          {post.timeline && (
+            <div className="flex items-center gap-1 bg-orange-900/30 px-2 py-1 rounded-full border border-orange-500/20">
+              <svg className="h-3 w-3 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="font-medium text-orange-300 text-xs">{post.timeline}</span>
+            </div>
+          )}
+              </div>
+              
+        {/* Post Images - Collage Style */}
         {post.images && post.images.length > 0 && (
           <div className="mb-4">
-            <div className="grid grid-cols-1 gap-2">
-              {post.images.map((image, index) => (
-                <div key={index} className="relative group">
-                  <img 
-                    src={image} 
-                    alt={`Post image ${index + 1}`}
-                    className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => window.open(image, '_blank')}
-                    onError={(e) => {
-                      // Fallback to placeholder if image fails to load
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                    }}
-                  />
-                  {/* Fallback placeholder */}
-                  <div className="aspect-video bg-gray-800 rounded-lg flex items-center justify-center hidden">
-                    <span className="text-gray-400 text-sm">📷 Image {index + 1}</span>
+            <div 
+              className="relative group cursor-pointer rounded-lg overflow-hidden"
+              onClick={() => setLocation(`/post/${post.id}`)}
+            >
+              {post.images.length === 1 && (
+                <img 
+                  src={post.images[0]} 
+                  alt="Post image"
+                  className="w-full h-64 object-cover hover:opacity-90 transition-opacity"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              )}
+              
+                              {post.images.length === 2 && (
+                  <div className="grid grid-cols-2 gap-1 h-64">
+                    <div className="relative w-full h-full">
+                      <img 
+                        src={post.images[0]} 
+                        alt="Post image 1"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+              </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+            </div>
+        </div>
+            </div>
+                    <div className="relative w-full h-full">
+                      <img 
+                        src={post.images[1]} 
+                        alt="Post image 2"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+              </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+          </div>
+        </div>
+                    </div>
                   </div>
+                )}
+              
+                              {post.images.length === 3 && (
+                  <div className="grid grid-cols-2 gap-1 h-64">
+                    <div className="relative w-full h-full row-span-2">
+                      <img 
+                        src={post.images[0]} 
+                        alt="Post image 1"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[1]} 
+                        alt="Post image 2"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[2]} 
+                        alt="Post image 3"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {post.images.length === 4 && (
+                  <div className="grid grid-cols-2 gap-1 h-64">
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[0]} 
+                        alt="Post image 1"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[1]} 
+                        alt="Post image 2"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[2]} 
+                        alt="Post image 3"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[3]} 
+                        alt="Post image 4"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {post.images.length > 4 && (
+                  <div className="grid grid-cols-2 gap-1 h-64">
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[0]} 
+                        alt="Post image 1"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[1]} 
+                        alt="Post image 2"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[2]} 
+                        alt="Post image 3"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32 bg-gray-800 flex items-center justify-center">
+                      <img 
+                        src={post.images[3]} 
+                        alt="Post image 4"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <span className="text-white font-bold text-lg">+{post.images.length - 4}</span>
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              
+              {/* Fallback placeholder */}
+              <div className="w-full h-64 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg flex items-center justify-center hidden border border-gray-700">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-400 text-xs">Investment Preview</p>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         )}
         
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-700">
+        <div className="flex items-center justify-between pt-4 border-t border-gray-700/50">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="flex items-center justify-center text-gray-400 hover:text-white"
+            className={`flex items-center gap-2 rounded-lg transition-all duration-200 ${
+              isLiked ? 'text-red-400 bg-red-500/10' : 'text-gray-400 hover:text-red-400 hover:bg-red-500/10'
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleLike(post.id);
+            }}
+            disabled={likeMutation.isPending}
+          >
+            <Heart className={`h-5 w-5 ${isLiked ? 'fill-current' : ''}`} />
+            <span className="text-sm font-medium">{likeCount}</span>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+           className="flex items-center gap-2 text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all duration-200"
+            onClick={(e) => {
+              e.stopPropagation();
+             handleInterest(post.id);
+           }}
+           disabled={expressInterestMutation.isPending}
+         >
+           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+           </svg>
+           <span className="text-sm font-medium">{postInterests[post.id]?.length || 0}</span>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex items-center justify-center text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all duration-200"
             onClick={(e) => {
               e.stopPropagation();
               handleShare(post);
@@ -486,19 +929,7 @@ export default function UnifiedDashboard() {
           <Button 
             variant="ghost" 
             size="sm" 
-            className="flex items-center justify-center text-gray-400 hover:text-white"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleSend(post);
-            }}
-          >
-            <Send className="h-5 w-5" />
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="flex items-center justify-center text-gray-400 hover:text-white"
+            className="flex items-center justify-center text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition-all duration-200"
             onClick={(e) => {
               e.stopPropagation();
               handleBookmark(post);
@@ -507,14 +938,6 @@ export default function UnifiedDashboard() {
             <Bookmark className="h-5 w-5" />
           </Button>
         </div>
-        
-        {post.category && (
-          <div className="mt-2">
-            <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
-              {post.category}
-            </Badge>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -525,6 +948,10 @@ export default function UnifiedDashboard() {
     const timeAgo = post.createdAt ? getTimeAgo(new Date(post.createdAt)) : '';
     const comments = postComments[post.id] || [];
     const likeCount = postLikes[post.id]?.length || 0;
+    const [showFullContent, setShowFullContent] = useState(false);
+    
+    const shouldTruncate = post.content.length > 150;
+    const displayContent = showFullContent ? post.content : post.content.substring(0, 150);
     
     // Get author name from post data or use fallback
     let authorName = 'Anonymous User';
@@ -549,7 +976,7 @@ export default function UnifiedDashboard() {
     const authorInitial = authorName.charAt(0).toUpperCase();
 
     return (
-      <Card className="bg-gray-900 border-gray-700 hover:border-gray-600 transition-all duration-200">
+      <Card className="bg-gray-900 border-gray-700 hover:border-gray-600 hover:shadow-xl transition-all duration-300">
         <CardHeader className="pb-3">
           <div className="flex items-start space-x-3">
             {/* User Avatar */}
@@ -576,6 +1003,11 @@ export default function UnifiedDashboard() {
                     {post.author?.userType === 'entrepreneur' ? 'Entrepreneur' : 'Investor'} • {timeAgo}
                   </p>
                 </div>
+                {post.category && (
+                  <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
+                    {post.category}
+                  </Badge>
+                )}
                 <DropdownMenu open={openDropdown === post.id} onOpenChange={(open) => setOpenDropdown(open ? post.id : null)}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
@@ -640,71 +1072,390 @@ export default function UnifiedDashboard() {
           {/* Post Content */}
           <div className="mb-4">
             <p className="text-gray-300 text-sm leading-relaxed">
-              {post.content}
+              {displayContent}
+              {shouldTruncate && !showFullContent && '...'}
+              {shouldTruncate && !showFullContent && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowFullContent(true);
+                  }}
+                  className="text-blue-400 hover:text-blue-300 font-medium ml-1 cursor-pointer"
+                >
+                  Show more
+                </button>
+              )}
+              {shouldTruncate && showFullContent && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowFullContent(false);
+                  }}
+                  className="text-blue-400 hover:text-blue-300 font-medium ml-1 cursor-pointer"
+                >
+                  Show less
+                </button>
+              )}
             </p>
           </div>
 
-          {/* Post Images */}
+          {/* Post Images - Collage Style */}
           {post.images && post.images.length > 0 && (
             <div className="mb-4">
-              <div className="grid grid-cols-1 gap-2">
-                {post.images.map((image, index) => (
-                  <div key={index} className="relative group">
-                    <img 
-                      src={image} 
-                      alt={`Post image ${index + 1}`}
-                      className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => window.open(image, '_blank')}
-                      onError={(e) => {
-                        // Fallback to placeholder if image fails to load
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    {/* Fallback placeholder */}
-                    <div className="aspect-video bg-gray-800 rounded-lg flex items-center justify-center hidden">
-                      <span className="text-gray-400 text-sm">📷 Image {index + 1}</span>
+              <div 
+                className="relative group cursor-pointer rounded-lg overflow-hidden"
+                onClick={() => setLocation(`/post/${post.id}`)}
+              >
+                {post.images.length === 1 && (
+                  <img 
+                    src={post.images[0]} 
+                    alt="Post image"
+                    className="w-full h-64 object-cover hover:opacity-90 transition-opacity"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                )}
+                
+                {post.images.length === 2 && (
+                  <div className="grid grid-cols-2 gap-1 h-64">
+                    <div className="relative w-full h-full">
+                      <img 
+                        src={post.images[0]} 
+                        alt="Post image 1"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                  </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-full">
+                      <img 
+                        src={post.images[1]} 
+                        alt="Post image 2"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                ))}
+                )}
+                
+                {post.images.length === 3 && (
+                  <div className="grid grid-cols-2 gap-1 h-64">
+                    <div className="relative w-full h-full row-span-2">
+                      <img 
+                        src={post.images[0]} 
+                        alt="Post image 1"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[1]} 
+                        alt="Post image 2"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[2]} 
+                        alt="Post image 3"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {post.images.length === 4 && (
+                  <div className="grid grid-cols-2 gap-1 h-64">
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[0]} 
+                        alt="Post image 1"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[1]} 
+                        alt="Post image 2"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[2]} 
+                        alt="Post image 3"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[3]} 
+                        alt="Post image 4"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {post.images.length > 4 && (
+                  <div className="grid grid-cols-2 gap-1 h-64">
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[0]} 
+                        alt="Post image 1"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[1]} 
+                        alt="Post image 2"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32">
+                      <img 
+                        src={post.images[2]} 
+                        alt="Post image 3"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative w-full h-32 bg-gray-800 flex items-center justify-center">
+                      <img 
+                        src={post.images[3]} 
+                        alt="Post image 4"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <span className="text-white font-bold text-lg">+{post.images.length - 4}</span>
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center hidden border border-gray-700">
+                        <div className="text-center">
+                          <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-xs">Image</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Fallback placeholder */}
+                <div className="w-full h-64 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg flex items-center justify-center hidden border border-gray-700">
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-400 text-xs">Post Preview</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Category Badge */}
-          {post.category && (
-            <div className="mb-4">
-              <Badge variant="outline" className="text-xs border-gray-600 text-gray-300 bg-gray-800">
-                {post.category}
-              </Badge>
-            </div>
-          )}
+
 
           {/* Engagement Stats */}
           <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-1">
-                <div className="flex -space-x-1">
-                  <div className="w-5 h-5 bg-blue-500 rounded-full border border-gray-900"></div>
-                  <div className="w-5 h-5 bg-green-500 rounded-full border border-gray-900"></div>
-                  <div className="w-5 h-5 bg-purple-500 rounded-full border border-gray-900"></div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 bg-gray-800/50 px-3 py-1 rounded-full">
+                <div className="flex -space-x-1 mr-2">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full border border-gray-900"></div>
+                  <div className="w-4 h-4 bg-green-500 rounded-full border border-gray-900"></div>
+                  <div className="w-4 h-4 bg-purple-500 rounded-full border border-gray-900"></div>
                 </div>
-                <span>{likeCount} likes</span>
+                <span className="font-medium">{likeCount} likes</span>
               </div>
-              <span>•</span>
-              
-              <span>•</span>
-              <span>{comments.length} comments</span>
+              <div className="flex items-center gap-2 bg-gray-800/50 px-3 py-1 rounded-full">
+                <MessageCircle className="h-4 w-4 text-blue-400" />
+                <span className="font-medium">{comments.length} comments</span>
+              </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-700">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-700/50">
             <Button 
               variant="ghost" 
               size="sm" 
-              className={`flex items-center justify-center ${
-                isLiked ? 'text-blue-400' : 'text-gray-400 hover:text-white'
+              className={`flex items-center justify-center rounded-lg transition-all duration-200 ${
+                isLiked ? 'text-blue-400 bg-blue-500/10' : 'text-gray-400 hover:text-blue-400 hover:bg-blue-500/10'
               }`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -718,7 +1469,7 @@ export default function UnifiedDashboard() {
             <Button 
               variant="ghost" 
               size="sm" 
-              className="flex items-center justify-center text-gray-400 hover:text-white"
+              className="flex items-center justify-center text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all duration-200"
               onClick={(e) => {
                 e.stopPropagation();
                 toggleComments(post.id);
@@ -730,7 +1481,7 @@ export default function UnifiedDashboard() {
             <Button 
               variant="ghost" 
               size="sm" 
-              className="flex items-center justify-center text-gray-400 hover:text-white"
+              className="flex items-center justify-center text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition-all duration-200"
               onClick={(e) => {
                 e.stopPropagation();
                 handleShare(post);
@@ -742,7 +1493,7 @@ export default function UnifiedDashboard() {
             <Button 
               variant="ghost" 
               size="sm" 
-              className="flex items-center justify-center text-gray-400 hover:text-white"
+              className="flex items-center justify-center text-gray-400 hover:text-orange-400 hover:bg-orange-500/10 rounded-lg transition-all duration-200"
               onClick={(e) => {
                 e.stopPropagation();
                 handleSend(post);
@@ -877,28 +1628,56 @@ export default function UnifiedDashboard() {
                   </div>
                 ) : (
                   <div className="p-2">
-                    {notifications.slice(0, 5).map((notification) => (
-                      <DropdownMenuItem
-                        key={notification.id}
-                        className="flex items-start space-x-3 p-3 hover:bg-gray-800 cursor-pointer"
-                        onClick={() => setLocation(`/chat/${notification.senderId}`)}
-                      >
-                        <div className="w-8 h-8 bg-blue-600/20 rounded-full flex items-center justify-center flex-shrink-0">
-                          <MessageSquare className="h-4 w-4 text-blue-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate">
-                            {notification.senderName}
-                          </p>
-                          <p className="text-gray-400 text-xs truncate">
-                            {notification.content}
-                          </p>
-                          <p className="text-gray-500 text-xs mt-1">
-                            {getTimeAgo(new Date(notification.timestamp))}
-                          </p>
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
+                    {notifications.slice(0, 5).map((notification) => {
+                      // Determine icon and navigation based on notification type
+                      let icon, bgColor, textColor, onClickHandler;
+                      
+                      if (notification.type === 'new_message') {
+                        icon = <MessageSquare className="h-4 w-4 text-blue-400" />;
+                        bgColor = "bg-blue-600/20";
+                        textColor = "text-blue-400";
+                        onClickHandler = () => setLocation(`/chat/${notification.senderId}`);
+                      } else if (notification.type === 'post_liked') {
+                        icon = <Heart className="h-4 w-4 text-red-400" />;
+                        bgColor = "bg-red-600/20";
+                        textColor = "text-red-400";
+                        onClickHandler = () => setLocation(`/post/${notification.postId}`);
+                      } else if (notification.type === 'post_commented') {
+                        icon = <MessageCircle className="h-4 w-4 text-green-400" />;
+                        bgColor = "bg-green-600/20";
+                        textColor = "text-green-400";
+                        onClickHandler = () => setLocation(`/post/${notification.postId}`);
+                      } else {
+                        // Default to message icon
+                        icon = <MessageSquare className="h-4 w-4 text-blue-400" />;
+                        bgColor = "bg-blue-600/20";
+                        textColor = "text-blue-400";
+                        onClickHandler = () => setLocation(`/chat/${notification.senderId}`);
+                      }
+                      
+                      return (
+                        <DropdownMenuItem
+                          key={notification.id}
+                          className="flex items-start space-x-3 p-3 hover:bg-gray-800 cursor-pointer"
+                          onClick={onClickHandler}
+                        >
+                          <div className={`w-8 h-8 ${bgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
+                            {icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-medium truncate">
+                              {notification.senderName}
+                            </p>
+                            <p className="text-gray-400 text-xs truncate">
+                              {notification.content}
+                            </p>
+                            <p className="text-gray-500 text-xs mt-1">
+                              {getTimeAgo(new Date(notification.timestamp))}
+                            </p>
+                          </div>
+                        </DropdownMenuItem>
+                      );
+                    })}
                     {notifications.length > 5 && (
                       <div className="p-2 border-t border-gray-700">
                         <Button

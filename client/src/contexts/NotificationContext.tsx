@@ -10,12 +10,16 @@ interface NotificationContextType {
   };
   unreadCount: number;
   notifications: Array<{
-    id: string;
+    id?: string;
+    messageId?: string;
+    postId?: string;
+    commentId?: string;
     senderId: string;
     senderName: string;
     content: string;
     timestamp: string;
-    conversationId: string;
+    conversationId?: string;
+    type?: 'new_message' | 'post_liked' | 'post_commented' | 'comment_replied';
   }>;
   updateSettings: (newSettings: Partial<{
     enabled: boolean;

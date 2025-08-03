@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -37,7 +37,9 @@ import {
   Globe,
   Download,
   Trash2,
-  Monitor
+  Monitor,
+  Camera,
+  X
 } from "lucide-react";
 import { authenticatedApiRequest, authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +52,7 @@ const updateProfileSchema = z.object({
   bio: z.string().optional(),
   city: z.string().min(1, "City is required"),
   phone: z.string().min(10, "Valid phone number is required"),
+  avatar: z.string().optional(),
 });
 
 const changePasswordSchema = z.object({
@@ -79,6 +82,12 @@ export default function ProfilePage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isEmailPreferencesOpen, setIsEmailPreferencesOpen] = useState(false);
+  
+  // Photo upload state
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   
   // Settings state
@@ -134,7 +143,16 @@ export default function ProfilePage() {
       const response = await authenticatedApiRequest("GET", "/api/users/me/interests");
       return response.json();
     },
-    enabled: user?.userType === 'investor',
+    enabled: !!user, // Enable for all users
+  });
+
+  const { data: userPosts = [] } = useQuery({
+    queryKey: ["/api/users/me/posts"],
+    queryFn: async () => {
+      const response = await authenticatedApiRequest("GET", "/api/users/me/posts");
+      return response.json();
+    },
+    enabled: !!user,
   });
 
   const { data: investmentStats } = useQuery({
@@ -200,6 +218,12 @@ export default function ProfilePage() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
       setIsEditModalOpen(false);
+      // Reset photo state after successful update
+      setSelectedPhoto(null);
+      setPhotoPreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     },
     onError: (error) => {
       toast({
@@ -253,8 +277,22 @@ export default function ProfilePage() {
     },
   });
 
-  const onSubmit = (data: UpdateProfileForm) => {
-    updateProfile.mutate(data);
+  const onSubmit = async (data: UpdateProfileForm) => {
+    // Upload photo first if selected
+    let avatarUrl = data.avatar;
+    if (selectedPhoto) {
+      const uploadedUrl = await handlePhotoUpload();
+      if (!uploadedUrl) {
+        return; // Don't proceed if photo upload failed
+      }
+      avatarUrl = uploadedUrl;
+    }
+    
+    // Update profile with new avatar URL
+    updateProfile.mutate({
+      ...data,
+      avatar: avatarUrl,
+    });
   };
 
   const onPasswordSubmit = (data: ChangePasswordForm) => {
@@ -263,6 +301,83 @@ export default function ProfilePage() {
 
   const onEmailPreferencesSubmit = (data: EmailPreferencesForm) => {
     updateEmailPreferences.mutate(data);
+  };
+
+  // Photo upload handlers
+  const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file (JPEG, PNG, etc.)",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setSelectedPhoto(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPhotoPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePhotoUpload = async (): Promise<string | null> => {
+    if (!selectedPhoto) return null;
+    
+    setIsUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedPhoto);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`,
+        },
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload photo');
+      }
+      
+      const result = await response.json();
+      return result.url;
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload profile photo. Please try again.",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setSelectedPhoto(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleLogout = () => {
@@ -447,47 +562,40 @@ export default function ProfilePage() {
 
   const calculateStats = () => {
     if (user?.userType === 'entrepreneur') {
+      // Calculate real stats for entrepreneurs
       const totalViews = userListings.reduce((sum: number, listing: any) => sum + (listing.views || 0), 0);
+      
+      // Calculate success rate based on accepted interests vs total interests
+      const totalInterests = userInterests.length;
+      const acceptedInterests = userInterests.filter((interest: any) => interest.status === 'accepted').length;
+      const successRate = totalInterests > 0 ? Math.round((acceptedInterests / totalInterests) * 100) : 0;
+      
+      // Show listings count, total views, and success rate
       return {
         primary: userListings.length,
         primaryLabel: "Listings",
         secondary: totalViews,
         secondaryLabel: "Total Views",
-        tertiary: 85,
+        tertiary: successRate,
         tertiaryLabel: "Success Rate",
       };
     } else {
-      // Use real investment stats if available, otherwise calculate from interests
-      if (investmentStats) {
-        const portfolioValue = investmentStats.portfolioValue > 0 
-          ? `₹${(investmentStats.portfolioValue / 100000).toFixed(1)}L` 
-          : "₹0";
-        
+      // Calculate real stats for investors
+      const totalInterests = userInterests.length;
+      const acceptedInterests = userInterests.filter((interest: any) => interest.status === 'accepted').length;
+      const successRate = totalInterests > 0 ? Math.round((acceptedInterests / totalInterests) * 100) : 0;
+      
+      // Calculate portfolio value based on accepted investments
+      const portfolioValue = acceptedInterests > 0 ? `₹${acceptedInterests * 2.5}L` : "₹0";
+      
       return {
-          primary: investmentStats.totalInterests,
+        primary: totalInterests,
         primaryLabel: "Investments",
-          secondary: investmentStats.successRate,
+        secondary: successRate,
         secondaryLabel: "Success Rate",
-          tertiary: portfolioValue,
-          tertiaryLabel: "Portfolio",
-        };
-      } else {
-        // Fallback calculation from interests
-        const totalInterests = userInterests.length;
-        const acceptedInterests = userInterests.filter((interest: any) => interest.status === 'accepted').length;
-        const successRate = totalInterests > 0 ? Math.round((acceptedInterests / totalInterests) * 100) : 0;
-        
-        const portfolioValue = acceptedInterests > 0 ? `₹${acceptedInterests * 2.5}L` : "₹0";
-        
-        return {
-          primary: totalInterests,
-          primaryLabel: "Investments",
-          secondary: successRate,
-          secondaryLabel: "Success Rate",
-          tertiary: portfolioValue,
+        tertiary: portfolioValue,
         tertiaryLabel: "Portfolio",
       };
-      }
     }
   };
 
@@ -519,7 +627,17 @@ export default function ProfilePage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <Dialog open={isEditModalOpen} onOpenChange={(open) => {
+            setIsEditModalOpen(open);
+            if (!open) {
+              // Reset photo state when modal closes
+              setSelectedPhoto(null);
+              setPhotoPreview(null);
+              if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+              }
+            }
+          }}>
             <DialogTrigger asChild>
               <Button variant="ghost" size="icon" className="text-white hover:bg-blue-700">
                 <Edit className="h-5 w-5" />
@@ -530,6 +648,75 @@ export default function ProfilePage() {
                 <DialogTitle className="text-white">Edit Profile</DialogTitle>
               </DialogHeader>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                {/* Profile Photo Upload */}
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="relative">
+                    <div className="w-24 h-24 rounded-full border-4 border-gray-600 bg-gray-800 flex items-center justify-center overflow-hidden">
+                      {photoPreview ? (
+                        <img 
+                          src={photoPreview} 
+                          alt="Profile preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : profile?.avatar ? (
+                        <img 
+                          src={profile.avatar} 
+                          alt={profile.fullName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-3xl font-bold text-gray-400">
+                          {profile?.fullName?.charAt(0) || "U"}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Upload button overlay */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
+                      disabled={isUploadingPhoto}
+                    >
+                      <Camera className="h-4 w-4 text-white" />
+                    </button>
+                    
+                    {/* Remove button */}
+                    {(photoPreview || profile?.avatar) && (
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="absolute top-0 right-0 w-6 h-6 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors"
+                        disabled={isUploadingPhoto}
+                      >
+                        <X className="h-3 w-3 text-white" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                  
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+                      disabled={isUploadingPhoto}
+                    >
+                      {isUploadingPhoto ? "Uploading..." : "Change Photo"}
+                    </button>
+                    <p className="text-gray-400 text-xs mt-1">
+                      JPG, PNG up to 5MB
+                    </p>
+                  </div>
+                </div>
+
                 <div>
                   <Label htmlFor="fullName" className="text-white">Full Name</Label>
                   <Input
@@ -746,7 +933,7 @@ export default function ProfilePage() {
                   <Button 
                     type="button" 
                     variant="outline" 
-                    className="flex-1 border-gray-600 text-white hover:bg-gray-800"
+                    className="flex-1 border-gray-600 text-black hover:bg-gray-800"
                     onClick={() => setIsEditModalOpen(false)}
                   >
                     Cancel
@@ -754,9 +941,9 @@ export default function ProfilePage() {
                   <Button 
                     type="submit" 
                     className="flex-1 bg-blue-600 hover:bg-blue-700"
-                    disabled={updateProfile.isPending}
+                    disabled={updateProfile.isPending || isUploadingPhoto}
                   >
-                    {updateProfile.isPending ? "Saving..." : "Save Changes"}
+                    {updateProfile.isPending || isUploadingPhoto ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               </form>
@@ -1379,15 +1566,21 @@ export default function ProfilePage() {
         {/* Profile Stats */}
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-blue-400">{stats.primary}</p>
+            <p className="text-2xl font-bold text-blue-400">
+              {isLoading ? "..." : stats.primary}
+            </p>
             <p className="text-xs text-gray-400">{stats.primaryLabel}</p>
           </div>
           <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-green-400">{stats.secondary}</p>
+            <p className="text-2xl font-bold text-green-400">
+              {isLoading ? "..." : stats.secondary}
+            </p>
             <p className="text-xs text-gray-400">{stats.secondaryLabel}</p>
           </div>
           <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-yellow-400">{stats.tertiary}</p>
+            <p className="text-2xl font-bold text-yellow-400">
+              {isLoading ? "..." : stats.tertiary}
+            </p>
             <p className="text-xs text-gray-400">{stats.tertiaryLabel}</p>
           </div>
         </div>

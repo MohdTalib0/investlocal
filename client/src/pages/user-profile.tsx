@@ -65,7 +65,13 @@ export default function UserProfilePage() {
     queryFn: async () => {
       if (!userId) return [];
       
-      const response = await fetch(`/api/posts?authorId=${userId}&limit=5`);
+      const token = authService.getToken();
+      const response = await fetch(`/api/users/${userId}/posts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       if (!response.ok) return [];
       
       return response.json();

@@ -50,6 +50,7 @@ export interface IStorage {
     fundingMax?: number;
     search?: string;
     status?: string;
+    authorId?: string;
   }): Promise<Post[]>;
   getPost(id: string): Promise<Post | undefined>;
   updatePost(id: string, updates: Partial<Post>): Promise<Post>;
@@ -93,6 +94,7 @@ export interface IStorage {
   // Interest methods
   createInterest(interest: InsertInterest): Promise<Interest>;
   getListingInterests(listingId: string): Promise<Interest[]>;
+  getPostInterests(postId: string): Promise<Interest[]>;
   getUserInterests(userId: string): Promise<Interest[]>;
   getInterestById(id: string): Promise<Interest | undefined>;
   deleteInterest(id: string): Promise<void>;
@@ -167,6 +169,7 @@ export class DatabaseStorage implements IStorage {
     fundingMax?: number;
     search?: string;
     status?: string;
+    authorId?: string;
   }): Promise<Post[]> {
     const conditions = [eq(posts.isActive, true)];
     
@@ -191,6 +194,10 @@ export class DatabaseStorage implements IStorage {
           ilike(posts.content, `%${filters.search}%`)
         )!
       );
+    }
+    
+    if (filters?.authorId) {
+      conditions.push(eq(posts.authorId, filters.authorId));
     }
     
     if (filters?.fundingMin && filters.postType === 'investment') {
@@ -517,6 +524,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(interests)
       .where(eq(interests.listingId, listingId))
+      .orderBy(desc(interests.createdAt));
+  }
+
+  async getPostInterests(postId: string): Promise<Interest[]> {
+    return await db
+      .select()
+      .from(interests)
+      .where(eq(interests.postId, postId))
       .orderBy(desc(interests.createdAt));
   }
 

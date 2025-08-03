@@ -10,12 +10,16 @@ interface NotificationSettings {
 }
 
 interface ChatNotification {
-  id: string;
+  id?: string;
+  messageId?: string;
+  postId?: string;
+  commentId?: string;
   senderId: string;
   senderName: string;
   content: string;
   timestamp: string;
-  conversationId: string;
+  conversationId?: string;
+  type?: 'new_message' | 'post_liked' | 'post_commented' | 'comment_replied';
 }
 
 interface CallNotification {
@@ -86,11 +90,24 @@ export function useNotifications() {
       return;
     }
 
-    const browserNotification = new Notification('New Message', {
-      body: `${notification.senderName}: ${notification.content}`,
+    let title = 'New Message';
+    let body = `${notification.senderName}: ${notification.content}`;
+    let tag = notification.conversationId || notification.postId || 'notification';
+    let onClickUrl = `/chat/${notification.senderId}`;
+
+    if (notification.type === 'post_liked') {
+      title = 'Post Liked';
+      onClickUrl = `/post/${notification.postId}`;
+    } else if (notification.type === 'post_commented') {
+      title = 'New Comment';
+      onClickUrl = `/post/${notification.postId}`;
+    }
+
+    const browserNotification = new Notification(title, {
+      body: body,
       icon: '/favicon.ico',
       badge: '/favicon.ico',
-      tag: notification.conversationId,
+      tag: tag,
       requireInteraction: false,
       silent: true, // We'll play our own sound
     });
@@ -98,8 +115,8 @@ export function useNotifications() {
     browserNotification.onclick = () => {
       window.focus();
       browserNotification.close();
-      // Navigate to chat
-      window.location.href = `/chat/${notification.senderId}`;
+      // Navigate to appropriate page
+      window.location.href = onClickUrl;
     };
 
     // Auto-close after 5 seconds
@@ -156,39 +173,61 @@ export function useNotifications() {
         }));
       };
 
-             wsRef.current.onmessage = (event) => {
-         try {
-           const data = JSON.parse(event.data);
-           
-           if (data.type === 'new_message' && data.senderId !== currentUser.id) {
-             handleNewMessage({
-               id: data.messageId,
-               senderId: data.senderId,
-               senderName: data.senderName,
-               content: data.content,
-               timestamp: data.timestamp,
-               conversationId: data.conversationId,
-             });
-           } else if (data.type === 'incoming_call') {
-             setIncomingCall(data);
-             // Play ringtone for incoming call
-             if (settings.sound) {
-               playNotificationSound();
-             }
-           } else if (data.type === 'call_accepted') {
-             setIncomingCall(null);
-             // Handle call accepted
-           } else if (data.type === 'call_rejected') {
-             setIncomingCall(null);
-             // Handle call rejected
-           } else if (data.type === 'call_ended') {
-             setIncomingCall(null);
-             // Handle call ended
-           }
-         } catch (error) {
-           console.error('Error parsing WebSocket message:', error);
-         }
-       };
+                   wsRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'new_message' && data.senderId !== currentUser.id) {
+            handleNewMessage({
+              id: data.messageId,
+              senderId: data.senderId,
+              senderName: data.senderName,
+              content: data.content,
+              timestamp: data.timestamp,
+              conversationId: data.conversationId,
+              type: 'new_message',
+            });
+          } else if (data.type === 'post_liked' && data.senderId !== currentUser.id) {
+            handleNewMessage({
+              id: data.postId,
+              postId: data.postId,
+              senderId: data.senderId,
+              senderName: data.senderName,
+              content: data.content,
+              timestamp: data.timestamp,
+              type: 'post_liked',
+            });
+          } else if (data.type === 'post_commented' && data.senderId !== currentUser.id) {
+            handleNewMessage({
+              id: data.commentId || data.postId,
+              postId: data.postId,
+              commentId: data.commentId,
+              senderId: data.senderId,
+              senderName: data.senderName,
+              content: data.content,
+              timestamp: data.timestamp,
+              type: 'post_commented',
+            });
+          } else if (data.type === 'incoming_call') {
+            setIncomingCall(data);
+            // Play ringtone for incoming call
+            if (settings.sound) {
+              playNotificationSound();
+            }
+          } else if (data.type === 'call_accepted') {
+            setIncomingCall(null);
+            // Handle call accepted
+          } else if (data.type === 'call_rejected') {
+            setIncomingCall(null);
+            // Handle call rejected
+          } else if (data.type === 'call_ended') {
+            setIncomingCall(null);
+            // Handle call ended
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
 
       wsRef.current.onerror = (error) => {
         console.warn('WebSocket connection failed - server may not be running');

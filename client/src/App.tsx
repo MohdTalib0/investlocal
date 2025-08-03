@@ -13,6 +13,7 @@ import UnifiedDashboard from "@/pages/unified-dashboard";
 import CreateListingPage from "@/pages/create-listing";
 import CreatePostPage from "@/pages/create-post";
 import OpportunityDetailPage from "@/pages/opportunity-detail";
+import PostDetailPage from "@/pages/post-detail";
 import ChatPage from "@/pages/chat";
 import ProfilePage from "@/pages/profile";
 import AdminDashboardPage from "@/pages/admin-dashboard";
@@ -56,6 +57,11 @@ function Router() {
       <Route path="/opportunity/:id">
         <ProtectedRoute>
           <OpportunityDetailPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/post/:id">
+        <ProtectedRoute>
+          <PostDetailPage />
         </ProtectedRoute>
       </Route>
       <Route path="/chat/:userId?">
