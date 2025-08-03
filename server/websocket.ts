@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
-import { authService } from '../client/src/lib/auth';
+import { verifyToken } from './auth';
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
@@ -59,7 +59,7 @@ class NotificationService {
   private handleAuthentication(ws: AuthenticatedWebSocket, message: any) {
     try {
       // Verify the token
-      const decoded = authService.verifyToken(message.token);
+      const decoded = verifyToken(message.token);
       if (decoded && decoded.userId === message.userId) {
         ws.userId = message.userId;
         ws.isAuthenticated = true;

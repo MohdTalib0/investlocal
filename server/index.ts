@@ -81,12 +81,14 @@ const keepAlive = () => {
 };
 
 (async () => {
-  // Initialize WebSocket notification service first
-  const tempServer = createServer(app);
-  const notificationService = new NotificationService(tempServer);
+  // Create the main HTTP server
+  const server = createServer(app);
+  
+  // Initialize WebSocket notification service with the main server
+  const notificationService = new NotificationService(server);
   
   // Register API routes with notification service
-  const server = await registerRoutes(app, notificationService);
+  await registerRoutes(app, notificationService);
 
   // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
