@@ -58,14 +58,6 @@ export function useOnboarding() {
              // Check if user has completed onboarding (from database)
              const hasCompletedOnboarding = freshUserData.isOnboardingComplete === true;
 
-             // Onboarding status check
-               hasBio,
-               hasPreferences,
-               hasCompletedOnboarding,
-               isOnboardingComplete: freshUserData.isOnboardingComplete,
-               userData: freshUserData
-             });
-
              setOnboardingState({
                isCompleted: hasBio && hasPreferences && hasCompletedOnboarding,
                currentStep: 1,
