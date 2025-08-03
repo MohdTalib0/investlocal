@@ -141,10 +141,6 @@ export default function UserProfilePage() {
 
   const isOwnProfile = currentUser?.id === userId;
   
-  // Debug logging
-  console.log('Current user ID:', currentUser?.id);
-  console.log('Profile user ID:', userId);
-  console.log('Is own profile:', isOwnProfile);
   const getTimeAgo = (date: string) => {
     const now = new Date();
     const created = new Date(date);

@@ -239,18 +239,18 @@ export default function RegistrationPage() {
     );
   }
 
-     return (
+  return (
      <div className="p-6 pt-16 min-h-screen bg-black">
-       {/* Header */}
-       <div className="flex items-center mb-8">
-         <Button 
-           variant="ghost" 
-           size="icon"
+      {/* Header */}
+      <div className="flex items-center mb-8">
+        <Button 
+          variant="ghost" 
+          size="icon"
            className="mr-4 text-white hover:bg-gray-800"
-           onClick={() => setLocation("/user-type")}
-         >
-           <ArrowLeft className="h-5 w-5" />
-         </Button>
+          onClick={() => setLocation("/user-type")}
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
        </div>
 
        {/* Hero Section */}
@@ -258,9 +258,9 @@ export default function RegistrationPage() {
          <div className="relative inline-block mb-6">
            <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 p-4 rounded-2xl shadow-lg">
              <div className="text-6xl">🤝</div>
-           </div>
-         </div>
-         
+        </div>
+      </div>
+
          <div className="mb-4">
            <Logo size="xl" />
          </div>
@@ -290,7 +290,7 @@ export default function RegistrationPage() {
       )}
 
       {currentStep === 1 ? (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div>
           <Label htmlFor="fullName" className="text-white">Full Name</Label>
           <Input
@@ -555,8 +555,8 @@ export default function RegistrationPage() {
           </Button>
         ) : (
           <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
-            {isLoading ? "Creating Account..." : "Create Account"}
-          </Button>
+          {isLoading ? "Creating Account..." : "Create Account"}
+        </Button>
         )}
       </form>
       ) : (

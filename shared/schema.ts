@@ -138,6 +138,22 @@ export const reports = pgTable("reports", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const userSessions = pgTable("user_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  sessionToken: text("session_token").notNull().unique(),
+  deviceInfo: jsonb("device_info").$type<{
+    userAgent: string;
+    platform: string;
+    browser: string;
+    ipAddress?: string;
+  }>(),
+  isActive: boolean("is_active").default(true),
+  lastActivity: timestamp("last_activity").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   listings: many(businessListings),
@@ -267,6 +283,13 @@ export const reportsRelations = relations(reports, ({ one }) => ({
   }),
 }));
 
+export const userSessionsRelations = relations(userSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [userSessions.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -301,6 +324,13 @@ export const insertReportSchema = createInsertSchema(reports).omit({
   id: true,
   createdAt: true,
   status: true,
+});
+
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
+  id: true,
+  createdAt: true,
+  isActive: true,
+  lastActivity: true,
 });
 
 export const insertPostSchema = createInsertSchema(posts).omit({
@@ -347,3 +377,5 @@ export type Interest = typeof interests.$inferSelect;
 export type InsertInterest = z.infer<typeof insertInterestSchema>;
 export type Report = typeof reports.$inferSelect;
 export type InsertReport = z.infer<typeof insertReportSchema>;
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;

@@ -8,6 +8,7 @@ import {
   ratings, 
   interests, 
   reports,
+  userSessions,
   type User, 
   type InsertUser,
   type BusinessListing,
@@ -25,7 +26,9 @@ import {
   type Interest,
   type InsertInterest,
   type Report,
-  type InsertReport
+  type InsertReport,
+  type UserSession,
+  type InsertUserSession
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, ilike, count } from "drizzle-orm";
@@ -99,6 +102,14 @@ export interface IStorage {
   createReport(report: InsertReport): Promise<Report>;
   getReports(status?: string): Promise<Report[]>;
   updateReportStatus(id: string, status: string): Promise<Report>;
+  
+  // Session methods
+  createSession(session: InsertUserSession): Promise<UserSession>;
+  getSessionByToken(token: string): Promise<UserSession | undefined>;
+  updateSessionActivity(token: string): Promise<void>;
+  deactivateSession(token: string): Promise<void>;
+  deactivateAllUserSessions(userId: string): Promise<void>;
+  getActiveUserSessions(userId: string): Promise<UserSession[]>;
   
   // Admin methods
   getPendingListings(): Promise<BusinessListing[]>;
@@ -557,6 +568,49 @@ export class DatabaseStorage implements IStorage {
       .where(eq(reports.id, id))
       .returning();
     return report;
+  }
+
+  // Session methods
+  async createSession(session: InsertUserSession): Promise<UserSession> {
+    const [newSession] = await db.insert(userSessions).values(session).returning();
+    return newSession;
+  }
+
+  async getSessionByToken(token: string): Promise<UserSession | undefined> {
+    const result = await db
+      .select()
+      .from(userSessions)
+      .where(and(eq(userSessions.sessionToken, token), eq(userSessions.isActive, true)));
+    return result[0];
+  }
+
+  async updateSessionActivity(token: string): Promise<void> {
+    await db
+      .update(userSessions)
+      .set({ lastActivity: new Date() })
+      .where(eq(userSessions.sessionToken, token));
+  }
+
+  async deactivateSession(token: string): Promise<void> {
+    await db
+      .update(userSessions)
+      .set({ isActive: false })
+      .where(eq(userSessions.sessionToken, token));
+  }
+
+  async deactivateAllUserSessions(userId: string): Promise<void> {
+    await db
+      .update(userSessions)
+      .set({ isActive: false })
+      .where(eq(userSessions.userId, userId));
+  }
+
+  async getActiveUserSessions(userId: string): Promise<UserSession[]> {
+    return await db
+      .select()
+      .from(userSessions)
+      .where(and(eq(userSessions.userId, userId), eq(userSessions.isActive, true)))
+      .orderBy(desc(userSessions.lastActivity));
   }
 
   async getPendingListings(): Promise<BusinessListing[]> {

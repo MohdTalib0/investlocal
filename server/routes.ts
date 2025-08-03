@@ -1,13 +1,56 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { insertUserSchema, insertBusinessListingSchema, insertPostSchema, insertMessageSchema, insertRatingSchema, insertInterestSchema, insertReportSchema, insertCommentSchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+
+// File upload configuration
+const uploadDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storageConfig = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storageConfig,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow common file types
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/zip', 'application/x-rar-compressed'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images, documents, and archives are allowed.'));
+    }
+  }
+});
 
 // Helper function to calculate real portfolio metrics
 async function calculatePortfolioMetrics(acceptedInterests: any[]) {
@@ -128,16 +171,49 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       // Generate JWT token
       const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET);
       
-      res.json({ 
-        user: { 
-          id: user.id, 
-          email: user.email, 
-          fullName: user.fullName,
-          userType: user.userType,
-          isVerified: user.isVerified
-        }, 
-        token 
-      });
+      // Create session (temporarily disabled for debugging)
+      try {
+        const sessionToken = crypto.randomUUID();
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+        
+        await storage.createSession({
+          userId: user.id,
+          sessionToken,
+          deviceInfo: {
+            userAgent: req.headers['user-agent'] || 'Unknown',
+            platform: 'Web',
+            browser: 'Unknown',
+            ipAddress: req.ip || req.connection.remoteAddress,
+          },
+          expiresAt,
+        });
+        
+        res.json({ 
+          user: { 
+            id: user.id, 
+            email: user.email, 
+            fullName: user.fullName,
+            userType: user.userType,
+            isVerified: user.isVerified
+          }, 
+          token,
+          sessionToken
+        });
+      } catch (sessionError) {
+        console.error("Session creation error:", sessionError);
+        // Fallback: return response without session for now
+        res.json({ 
+          user: { 
+            id: user.id, 
+            email: user.email, 
+            fullName: user.fullName,
+            userType: user.userType,
+            isVerified: user.isVerified
+          }, 
+          token
+        });
+      }
     } catch (error) {
       console.error("Registration error:", error);
       res.status(400).json({ message: "Registration failed" });
@@ -160,19 +236,55 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       
       const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET);
       
-      res.json({ 
-        user: { 
-          id: user.id, 
-          email: user.email, 
-          fullName: user.fullName,
-          userType: user.userType,
-          isVerified: user.isVerified,
-          avatar: user.avatar,
-          bio: user.bio,
-          city: user.city
-        }, 
-        token 
-      });
+      // Create session (temporarily disabled for debugging)
+      try {
+        const sessionToken = crypto.randomUUID();
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+        
+        await storage.createSession({
+          userId: user.id,
+          sessionToken,
+          deviceInfo: {
+            userAgent: req.headers['user-agent'] || 'Unknown',
+            platform: 'Web',
+            browser: 'Unknown',
+            ipAddress: req.ip || req.connection.remoteAddress,
+          },
+          expiresAt,
+        });
+        
+        res.json({ 
+          user: { 
+            id: user.id, 
+            email: user.email, 
+            fullName: user.fullName,
+            userType: user.userType,
+            isVerified: user.isVerified,
+            avatar: user.avatar,
+            bio: user.bio,
+            city: user.city
+          }, 
+          token,
+          sessionToken
+        });
+      } catch (sessionError) {
+        console.error("Session creation error:", sessionError);
+        // Fallback: return response without session for now
+        res.json({ 
+          user: { 
+            id: user.id, 
+            email: user.email, 
+            fullName: user.fullName,
+            userType: user.userType,
+            isVerified: user.isVerified,
+            avatar: user.avatar,
+            bio: user.bio,
+            city: user.city
+          }, 
+          token
+        });
+      }
     } catch (error) {
       console.error("Login error:", error);
       res.status(400).json({ message: "Login failed" });
@@ -226,11 +338,50 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         avatar: user.avatar,
         bio: user.bio,
         city: user.city,
-        phone: user.phone
+        phone: user.phone,
+        // Investment preferences (for investors)
+        investmentAmount: user.investmentAmount,
+        riskTolerance: user.riskTolerance,
+        preferredSectors: user.preferredSectors,
+        investmentHorizon: user.investmentHorizon,
+        experienceLevel: user.experienceLevel,
+        investmentGoals: user.investmentGoals,
       });
     } catch (error) {
       console.error("Update user error:", error);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Session management endpoints
+  app.get("/api/users/me/sessions", authenticateToken, async (req: any, res) => {
+    try {
+      const sessions = await storage.getActiveUserSessions(req.user.userId);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Get sessions error:", error);
+      res.status(500).json({ message: "Failed to get sessions" });
+    }
+  });
+
+  app.delete("/api/users/me/sessions/:sessionId", authenticateToken, async (req: any, res) => {
+    try {
+      const sessionId = req.params.sessionId;
+      await storage.deactivateSession(sessionId);
+      res.json({ message: "Session deactivated successfully" });
+    } catch (error) {
+      console.error("Deactivate session error:", error);
+      res.status(500).json({ message: "Failed to deactivate session" });
+    }
+  });
+
+  app.delete("/api/users/me/sessions", authenticateToken, async (req: any, res) => {
+    try {
+      await storage.deactivateAllUserSessions(req.user.userId);
+      res.json({ message: "All sessions deactivated successfully" });
+    } catch (error) {
+      console.error("Deactivate all sessions error:", error);
+      res.status(500).json({ message: "Failed to deactivate sessions" });
     }
   });
 
@@ -658,6 +809,79 @@ export async function registerRoutes(app: Express, notificationService?: any): P
       res.status(500).json({ message: "Failed to mark messages as read" });
     }
   });
+
+  // File upload routes
+  app.post("/api/messages/upload", authenticateToken, upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const { receiverId } = req.body;
+      if (!receiverId) {
+        return res.status(400).json({ message: "Receiver ID is required" });
+      }
+
+      // Create file URL
+      const fileUrl = `/uploads/${req.file.filename}`;
+      
+      // Create message with file
+      const messageData = {
+        senderId: req.user.userId,
+        receiverId: receiverId,
+        content: req.file.originalname, // Use original filename as content
+        messageType: 'file',
+        fileUrl: fileUrl,
+      };
+      
+      const message = await storage.createMessage(messageData);
+      
+      // Send notification to receiver
+      try {
+        const sender = await storage.getUser(req.user.userId);
+        const receiver = await storage.getUser(receiverId);
+        
+        if (sender && receiver) {
+          const notificationService = (req.app as any).notificationService;
+          
+          if (notificationService) {
+            notificationService.sendNotification(receiverId, {
+              type: 'new_message',
+              messageId: message.id,
+              senderId: req.user.userId,
+              senderName: sender.fullName || sender.email,
+              content: `Sent a file: ${req.file.originalname}`,
+              timestamp: message.createdAt,
+              conversationId: receiverId,
+              receiverId: receiverId,
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error("Notification error:", notificationError);
+      }
+      
+      res.json({
+        ...message,
+        file: {
+          originalName: req.file.originalname,
+          filename: req.file.filename,
+          size: req.file.size,
+          mimetype: req.file.mimetype,
+          url: fileUrl
+        }
+      });
+    } catch (error) {
+      console.error("File upload error:", error);
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
+  // Serve uploaded files
+  app.use('/uploads', (req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  }, express.static(path.join(__dirname, '../uploads')));
 
   // Interest routes
   app.post("/api/interests", authenticateToken, async (req: any, res) => {

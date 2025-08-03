@@ -52,7 +52,6 @@ export default function ChatPage() {
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(true);
-  const { incomingCall } = useNotificationContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, reset, watch } = useForm<{ message: string }>({
@@ -186,15 +185,43 @@ export default function ChatPage() {
     setIsEmojiPickerOpen(false);
   };
 
+  // Send file mutation
+  const sendFile = useMutation({
+    mutationFn: async (file: File) => {
+      if (!selectedUserId) throw new Error("No user selected");
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('receiverId', selectedUserId);
+      
+      const response = await authenticatedApiRequest("POST", "/api/messages/upload", formData, {
+        headers: {
+          // Don't set Content-Type, let the browser set it with boundary
+        },
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      setSelectedFile(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedUserId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
+      toast({
+        title: "File Sent",
+        description: "File has been sent successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to send file",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSendFile = () => {
     if (selectedFile) {
-      // For now, just show a toast. In a real app, you'd upload the file
-      toast({
-        title: "File Upload",
-        description: `File upload functionality will be implemented soon. Selected: ${selectedFile.name}`,
-        variant: "default",
-      });
-      setSelectedFile(null);
+      sendFile.mutate(selectedFile);
     }
   };
 
@@ -232,56 +259,7 @@ export default function ChatPage() {
     });
   };
 
-  const handleAnswerCall = async () => {
-    if (!incomingCall) return;
-    
-    try {
-      const response = await authenticatedApiRequest('POST', '/api/calls/respond', {
-        callId: incomingCall.callId, 
-        response: 'accept',
-        callerId: incomingCall.callerId 
-      });
-      
-      setIsCallActive(true);
-      toast({
-        title: "Call Answered",
-        description: "Call connected",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error('Answer call error:', error);
-      toast({
-        title: "Call Failed",
-        description: "Failed to answer call",
-        variant: "destructive",
-      });
-    }
-  };
 
-  const handleRejectCall = async () => {
-    if (!incomingCall) return;
-    
-    try {
-      const response = await authenticatedApiRequest('POST', '/api/calls/respond', {
-        callId: incomingCall.callId, 
-        response: 'reject',
-        callerId: incomingCall.callerId 
-      });
-      
-      toast({
-        title: "Call Rejected",
-        description: "Call was rejected",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error('Reject call error:', error);
-      toast({
-        title: "Call Failed",
-        description: "Failed to reject call",
-        variant: "destructive",
-      });
-    }
-  };
 
   const commonEmojis = [
     "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇",
@@ -397,7 +375,14 @@ export default function ChatPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-gray-400 line-clamp-1">
-                        {conversation.lastMessage.content}
+                        {conversation.lastMessage.messageType === "file" ? (
+                          <span className="flex items-center space-x-1">
+                            <FileText className="h-3 w-3" />
+                            <span>{conversation.lastMessage.content}</span>
+                          </span>
+                        ) : (
+                          conversation.lastMessage.content
+                        )}
                       </p>
                       {conversation.unreadCount > 0 && (
                         <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
@@ -570,51 +555,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Incoming Call Overlay */}
-      {incomingCall && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
-          <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full mx-4">
-            <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-blue-600/20 flex items-center justify-center mx-auto mb-4">
-                {selectedUser?.avatar ? (
-                  <img 
-                    src={selectedUser.avatar} 
-                    alt={selectedUser.fullName}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="text-3xl font-bold text-blue-400">
-                    {selectedUser?.fullName?.charAt(0) || "U"}
-                  </span>
-                )}
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">
-                {incomingCall.callerName}
-              </h3>
-              <p className="text-gray-400 mb-6">Incoming call...</p>
-              
-              <div className="flex justify-center space-x-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-16 h-16 rounded-full bg-green-600 hover:bg-green-700"
-                  onClick={handleAnswerCall}
-                >
-                  <PhoneCall className="h-6 w-6 text-white" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-700"
-                  onClick={handleRejectCall}
-                >
-                  <PhoneOff className="h-6 w-6 text-white" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
@@ -670,12 +611,33 @@ export default function ChatPage() {
                     >
                       {message.messageType === "file" && message.fileUrl ? (
                         <div className="flex items-center space-x-3 p-3 bg-gray-700 bg-opacity-50 rounded-lg border border-gray-600">
-                          <FileText className="h-5 w-5" />
+                          {message.content.toLowerCase().includes('.jpg') || 
+                           message.content.toLowerCase().includes('.jpeg') || 
+                           message.content.toLowerCase().includes('.png') || 
+                           message.content.toLowerCase().includes('.gif') || 
+                           message.content.toLowerCase().includes('.webp') ? (
+                            <Image className="h-5 w-5 text-blue-400" />
+                          ) : message.content.toLowerCase().includes('.pdf') ? (
+                            <FileText className="h-5 w-5 text-red-400" />
+                          ) : message.content.toLowerCase().includes('.doc') || 
+                               message.content.toLowerCase().includes('.docx') ? (
+                            <FileText className="h-5 w-5 text-blue-400" />
+                          ) : message.content.toLowerCase().includes('.xls') || 
+                               message.content.toLowerCase().includes('.xlsx') ? (
+                            <FileText className="h-5 w-5 text-green-400" />
+                          ) : (
+                            <FileText className="h-5 w-5 text-gray-400" />
+                          )}
                           <div className="flex-1">
-                            <p className="text-sm font-medium">Document</p>
+                            <p className="text-sm font-medium truncate">{message.content}</p>
                             <p className="text-xs opacity-75">Click to download</p>
                           </div>
-                          <Button size="sm" variant="ghost" className="text-white hover:bg-gray-600">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="text-white hover:bg-gray-600"
+                            onClick={() => window.open(message.fileUrl, '_blank')}
+                          >
                             <Download className="h-4 w-4" />
                           </Button>
                         </div>
@@ -707,7 +669,7 @@ export default function ChatPage() {
           type="file"
           onChange={handleFileSelect}
           className="hidden"
-          accept="image/*,.pdf,.doc,.docx,.txt"
+          accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.zip,.rar"
         />
         
         {/* Selected file preview */}

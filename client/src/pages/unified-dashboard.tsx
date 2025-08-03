@@ -48,23 +48,13 @@ export default function UnifiedDashboard() {
   const { data: posts = [], isLoading: postsLoading } = useQuery({
     queryKey: ["/api/posts", activeTab],
     queryFn: async () => {
-      console.log('Fetching posts for tab:', activeTab);
+      //console.log('Fetching posts for tab:', activeTab);
       const response = await fetch(`/api/posts?postType=${activeTab}`);
       if (!response.ok) throw new Error("Failed to fetch posts");
       const data = await response.json();
-      console.log('Fetched posts:', data);
+      //console.log('Fetched posts:', data);
       
-      // Debug: Check each post's author data
-      data.forEach((post: any) => {
-        console.log(`Post ${post.id}:`, {
-          authorId: post.authorId,
-          author: post.author,
-          authorName: post.author?.fullName || 'No fullName',
-          authorEmail: post.author?.email || 'No email',
-          allAuthorKeys: post.author ? Object.keys(post.author) : 'No author',
-          rawAuthor: JSON.stringify(post.author)
-        });
-      });
+
       
       return data;
     },
@@ -82,7 +72,7 @@ export default function UnifiedDashboard() {
             likesData[post.id] = await response.json();
           }
         } catch (error) {
-          console.error(`Failed to fetch likes for post ${post.id}:`, error);
+          //console.error(`Failed to fetch likes for post ${post.id}:`, error);
         }
       }
       return likesData;
@@ -102,7 +92,7 @@ export default function UnifiedDashboard() {
             commentsData[post.id] = await response.json();
           }
       } catch (error) {
-          console.error(`Failed to fetch comments for post ${post.id}:`, error);
+          //console.error(`Failed to fetch comments for post ${post.id}:`, error);
         }
       }
       return commentsData;
@@ -203,7 +193,7 @@ export default function UnifiedDashboard() {
         text: post.content.substring(0, 100) + '...',
         url: window.location.origin + `/post/${post.id}`
       }).catch((error) => {
-        console.log('Error sharing:', error);
+        //console.log('Error sharing:', error);
         // Fallback to copy link
         handleCopyLink(post);
       });
@@ -865,6 +855,8 @@ export default function UnifiedDashboard() {
           </div>
         </div>
       </div>
+
+      
 
       {/* Category Filter */}
         <div className="px-6 py-4">

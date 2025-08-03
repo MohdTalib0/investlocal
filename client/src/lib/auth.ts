@@ -117,16 +117,20 @@ export async function authenticatedApiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  options?: { headers?: Record<string, string> }
 ): Promise<Response> {
+  const isFormData = data instanceof FormData;
+  
   const headers = {
     ...authService.getAuthHeaders(),
-    ...(data ? { "Content-Type": "application/json" } : {}),
+    ...(data && !isFormData ? { "Content-Type": "application/json" } : {}),
+    ...(options?.headers || {}),
   };
 
   const res = await fetch(url, {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
+    body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
     credentials: "include",
   });
 

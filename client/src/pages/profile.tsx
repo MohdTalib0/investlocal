@@ -36,7 +36,8 @@ import {
   User,
   Globe,
   Download,
-  Trash2
+  Trash2,
+  Monitor
 } from "lucide-react";
 import { authenticatedApiRequest, authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -1491,6 +1492,18 @@ export default function ProfilePage() {
             <div className="flex items-center space-x-3">
               <HelpCircle className="h-5 w-5 text-gray-400" />
               <span className="text-white">Help & Support</span>
+            </div>
+            <span className="text-gray-400">→</span>
+          </Button>
+
+          <Button 
+            variant="outline"
+            className="w-full justify-between h-auto p-4 border-gray-700 hover:bg-gray-800 bg-gray-800"
+            onClick={() => setLocation("/sessions")}
+          >
+            <div className="flex items-center space-x-3">
+              <Monitor className="h-5 w-5 text-gray-400" />
+              <span className="text-white">Active Sessions</span>
             </div>
             <span className="text-gray-400">→</span>
           </Button>
