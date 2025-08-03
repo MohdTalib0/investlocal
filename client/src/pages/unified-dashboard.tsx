@@ -798,11 +798,11 @@ export default function UnifiedDashboard() {
                   size="icon" 
                   className="relative text-white hover:bg-blue-500/20"
                 >
-                  <Bell className="h-5 w-5" />
+              <Bell className="h-5 w-5" />
                   {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
                       {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
+              </span>
                   )}
                 </Button>
               </DropdownMenuTrigger>
@@ -847,7 +847,7 @@ export default function UnifiedDashboard() {
                           onClick={() => setLocation("/chat")}
                         >
                           View all notifications
-                        </Button>
+            </Button>
                       </div>
                     )}
                   </div>

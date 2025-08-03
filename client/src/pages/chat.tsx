@@ -50,9 +50,9 @@ export default function ChatPage() {
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isCallActive, setIsCallActive] = useState(false);
-  const [isIncomingCall, setIsIncomingCall] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(true);
+  const { incomingCall } = useNotificationContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, reset, watch } = useForm<{ message: string }>({
@@ -198,13 +198,29 @@ export default function ChatPage() {
     }
   };
 
-  const handleStartCall = () => {
-    setIsCallActive(true);
-    toast({
-      title: "Call Started",
-      description: `Calling ${selectedUser?.fullName || "User"}...`,
-      variant: "default",
-    });
+  const handleStartCall = async () => {
+    if (!selectedUserId) return;
+    
+    try {
+      const response = await authenticatedApiRequest('POST', '/api/calls/start', {
+        receiverId: selectedUserId
+      });
+      
+      const data = await response.json();
+      setIsCallActive(true);
+      toast({
+        title: "Call Started",
+        description: `Calling ${selectedUser?.fullName || "User"}...`,
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Start call error:', error);
+      toast({
+        title: "Call Failed",
+        description: "Failed to start call. User may be offline.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEndCall = () => {
@@ -216,23 +232,55 @@ export default function ChatPage() {
     });
   };
 
-  const handleAnswerCall = () => {
-    setIsIncomingCall(false);
-    setIsCallActive(true);
-    toast({
-      title: "Call Answered",
-      description: "Call connected",
-      variant: "default",
-    });
+  const handleAnswerCall = async () => {
+    if (!incomingCall) return;
+    
+    try {
+      const response = await authenticatedApiRequest('POST', '/api/calls/respond', {
+        callId: incomingCall.callId, 
+        response: 'accept',
+        callerId: incomingCall.callerId 
+      });
+      
+      setIsCallActive(true);
+      toast({
+        title: "Call Answered",
+        description: "Call connected",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Answer call error:', error);
+      toast({
+        title: "Call Failed",
+        description: "Failed to answer call",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleRejectCall = () => {
-    setIsIncomingCall(false);
-    toast({
-      title: "Call Rejected",
-      description: "Call was rejected",
-      variant: "default",
-    });
+  const handleRejectCall = async () => {
+    if (!incomingCall) return;
+    
+    try {
+      const response = await authenticatedApiRequest('POST', '/api/calls/respond', {
+        callId: incomingCall.callId, 
+        response: 'reject',
+        callerId: incomingCall.callerId 
+      });
+      
+      toast({
+        title: "Call Rejected",
+        description: "Call was rejected",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Reject call error:', error);
+      toast({
+        title: "Call Failed",
+        description: "Failed to reject call",
+        variant: "destructive",
+      });
+    }
   };
 
   const commonEmojis = [
@@ -523,7 +571,7 @@ export default function ChatPage() {
       )}
 
       {/* Incoming Call Overlay */}
-      {isIncomingCall && (
+      {incomingCall && (
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
           <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full mx-4">
             <div className="text-center">
@@ -541,7 +589,7 @@ export default function ChatPage() {
                 )}
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">
-                {selectedUser?.fullName || "User"}
+                {incomingCall.callerName}
               </h3>
               <p className="text-gray-400 mb-6">Incoming call...</p>
               

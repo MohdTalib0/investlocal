@@ -91,6 +91,8 @@ export interface IStorage {
   createInterest(interest: InsertInterest): Promise<Interest>;
   getListingInterests(listingId: string): Promise<Interest[]>;
   getUserInterests(userId: string): Promise<Interest[]>;
+  getInterestById(id: string): Promise<Interest | undefined>;
+  deleteInterest(id: string): Promise<void>;
   updateInterestStatus(id: string, status: string): Promise<Interest>;
   
   // Report methods
@@ -513,6 +515,15 @@ export class DatabaseStorage implements IStorage {
       .from(interests)
       .where(eq(interests.investorId, userId))
       .orderBy(desc(interests.createdAt));
+  }
+
+  async getInterestById(id: string): Promise<Interest | undefined> {
+    const result = await db.select().from(interests).where(eq(interests.id, id));
+    return result[0];
+  }
+
+  async deleteInterest(id: string): Promise<void> {
+    await db.delete(interests).where(eq(interests.id, id));
   }
 
   async updateInterestStatus(id: string, status: string): Promise<Interest> {

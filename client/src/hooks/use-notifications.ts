@@ -18,6 +18,14 @@ interface ChatNotification {
   conversationId: string;
 }
 
+interface CallNotification {
+  type: 'incoming_call' | 'call_accepted' | 'call_rejected' | 'call_ended';
+  callerId: string;
+  callerName: string;
+  callId: string;
+  timestamp: string;
+}
+
 export function useNotifications() {
   const [settings, setSettings] = useState<NotificationSettings>({
     enabled: true,
@@ -28,6 +36,7 @@ export function useNotifications() {
   
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<ChatNotification[]>([]);
+  const [incomingCall, setIncomingCall] = useState<CallNotification | null>(null);
   const queryClient = useQueryClient();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -147,24 +156,39 @@ export function useNotifications() {
         }));
       };
 
-      wsRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'new_message' && data.senderId !== currentUser.id) {
-            handleNewMessage({
-              id: data.messageId,
-              senderId: data.senderId,
-              senderName: data.senderName,
-              content: data.content,
-              timestamp: data.timestamp,
-              conversationId: data.conversationId,
-            });
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
+             wsRef.current.onmessage = (event) => {
+         try {
+           const data = JSON.parse(event.data);
+           
+           if (data.type === 'new_message' && data.senderId !== currentUser.id) {
+             handleNewMessage({
+               id: data.messageId,
+               senderId: data.senderId,
+               senderName: data.senderName,
+               content: data.content,
+               timestamp: data.timestamp,
+               conversationId: data.conversationId,
+             });
+           } else if (data.type === 'incoming_call') {
+             setIncomingCall(data);
+             // Play ringtone for incoming call
+             if (settings.sound) {
+               playNotificationSound();
+             }
+           } else if (data.type === 'call_accepted') {
+             setIncomingCall(null);
+             // Handle call accepted
+           } else if (data.type === 'call_rejected') {
+             setIncomingCall(null);
+             // Handle call rejected
+           } else if (data.type === 'call_ended') {
+             setIncomingCall(null);
+             // Handle call ended
+           }
+         } catch (error) {
+           console.error('Error parsing WebSocket message:', error);
+         }
+       };
 
       wsRef.current.onerror = (error) => {
         console.warn('WebSocket connection failed - server may not be running');
@@ -223,6 +247,7 @@ export function useNotifications() {
     settings,
     unreadCount,
     notifications,
+    incomingCall,
     updateSettings,
     clearNotifications,
     requestPermission,

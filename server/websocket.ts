@@ -18,6 +18,14 @@ interface NotificationMessage {
   receiverId: string;
 }
 
+interface CallMessage {
+  type: 'incoming_call' | 'call_accepted' | 'call_rejected' | 'call_ended';
+  callerId: string;
+  callerName: string;
+  callId: string;
+  timestamp: string;
+}
+
 class NotificationService {
   private wss: WebSocketServer;
   private clients: Map<string, AuthenticatedWebSocket> = new Map();
@@ -96,6 +104,20 @@ class NotificationService {
         console.log(`Notification sent to ${receiverId}`);
       } catch (error) {
         console.error('Error sending notification:', error);
+        // Remove disconnected client
+        this.clients.delete(receiverId);
+      }
+    }
+  }
+
+  public sendCallNotification(receiverId: string, callMessage: CallMessage) {
+    const client = this.clients.get(receiverId);
+    if (client && client.isAuthenticated && client.readyState === WebSocket.OPEN) {
+      try {
+        client.send(JSON.stringify(callMessage));
+        console.log(`Call notification sent to ${receiverId}: ${callMessage.type}`);
+      } catch (error) {
+        console.error('Error sending call notification:', error);
         // Remove disconnected client
         this.clients.delete(receiverId);
       }

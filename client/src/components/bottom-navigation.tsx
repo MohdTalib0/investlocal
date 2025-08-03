@@ -18,14 +18,8 @@ export default function BottomNavigation({ activeTab }: BottomNavigationProps) {
       case "home":
         setLocation("/dashboard");
         break;
-
       case "add":
-        if (user?.userType === 'entrepreneur') {
-          setLocation("/create-post");
-        } else {
-          // Investors can't post, maybe show a message or redirect to search
-          setLocation("/dashboard");
-        }
+        setLocation("/create-post");
         break;
       case "chat":
         setLocation("/chat");

@@ -9,6 +9,85 @@ import { insertUserSchema, insertBusinessListingSchema, insertPostSchema, insert
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
+// Helper function to calculate real portfolio metrics
+async function calculatePortfolioMetrics(acceptedInterests: any[]) {
+  if (acceptedInterests.length === 0) {
+    return {
+      sectors: {},
+      riskLevel: "No investments",
+      averageReturn: 0,
+      portfolioGrowth: 0
+    };
+  }
+
+  // Get the actual posts/businesses for these interests to calculate real metrics
+  const investmentDetails = await Promise.all(
+    acceptedInterests.map(async (interest) => {
+      let post = null;
+      let business = null;
+      
+      if (interest.postId) {
+        post = await storage.getPost(interest.postId);
+      } else if (interest.listingId) {
+        business = await storage.getBusinessListing(interest.listingId);
+      }
+      
+      return {
+        interest,
+        post,
+        business,
+        category: post?.category || business?.category || 'Other',
+        fundingAmount: post?.fundingMin || business?.fundingMin || 250000,
+        expectedReturn: post?.expectedRoi ? parseInt(post.expectedRoi) : (business?.expectedRoi ? parseInt(business.expectedRoi) : 12)
+      };
+    })
+  );
+
+  // Calculate sector distribution based on actual categories
+  const sectorCounts: { [key: string]: number } = {};
+  investmentDetails.forEach(({ category }) => {
+    const sector = category || 'Other';
+    sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+  });
+
+  // Convert counts to percentages
+  const totalInvestments = investmentDetails.length;
+  const sectors: { [key: string]: number } = {};
+  Object.entries(sectorCounts).forEach(([sector, count]) => {
+    sectors[sector] = Math.round((count / totalInvestments) * 100);
+  });
+
+  // Calculate average return based on actual expected returns
+  const totalReturn = investmentDetails.reduce((sum, { expectedReturn }) => sum + expectedReturn, 0);
+  const averageReturn = Math.round(totalReturn / totalInvestments);
+
+  // Calculate risk level based on sector diversity and investment amounts
+  const uniqueSectors = Object.keys(sectors).length;
+  const totalAmount = investmentDetails.reduce((sum, { fundingAmount }) => sum + fundingAmount, 0);
+  const averageAmount = totalAmount / totalInvestments;
+  
+  let riskLevel = "Moderate";
+  if (uniqueSectors <= 1) {
+    riskLevel = "High"; // Concentrated in one sector
+  } else if (uniqueSectors >= 4) {
+    riskLevel = "Low"; // Well diversified
+  }
+  
+  if (averageAmount > 500000) {
+    riskLevel = "High"; // Large individual investments
+  }
+
+  // Calculate portfolio growth (simplified - could be enhanced with historical data)
+  const portfolioGrowth = Math.round(averageReturn * 0.8); // Rough estimate based on average return
+
+  return {
+    sectors,
+    riskLevel,
+    averageReturn,
+    portfolioGrowth
+  };
+}
+
 // Middleware to verify JWT token
 const authenticateToken = (req: any, res: any, next: any) => {
   const authHeader = req.headers['authorization'];
@@ -117,7 +196,14 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         avatar: user.avatar,
         bio: user.bio,
         city: user.city,
-        phone: user.phone
+        phone: user.phone,
+        // Investment preferences (for investors)
+        investmentAmount: user.investmentAmount,
+        riskTolerance: user.riskTolerance,
+        preferredSectors: user.preferredSectors,
+        investmentHorizon: user.investmentHorizon,
+        experienceLevel: user.experienceLevel,
+        investmentGoals: user.investmentGoals,
       });
     } catch (error) {
       console.error("Get user error:", error);
@@ -609,6 +695,257 @@ export async function registerRoutes(app: Express, notificationService?: any): P
     }
   });
 
+  app.delete("/api/interests/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const interestId = req.params.id;
+      const interest = await storage.getInterestById(interestId);
+      
+      if (!interest) {
+        return res.status(404).json({ message: "Interest not found" });
+      }
+      
+      // Check if the user owns this interest
+      if (interest.investorId !== req.user.userId) {
+        return res.status(403).json({ message: "Not authorized to withdraw this interest" });
+      }
+      
+      // Only allow withdrawal of pending interests
+      if (interest.status !== 'pending') {
+        return res.status(400).json({ message: "Can only withdraw pending interests" });
+      }
+      
+      await storage.deleteInterest(interestId);
+      res.json({ message: "Interest withdrawn successfully" });
+    } catch (error) {
+      console.error("Withdraw interest error:", error);
+      res.status(500).json({ message: "Failed to withdraw interest" });
+    }
+  });
+
+  app.get("/api/users/me/investment-stats", authenticateToken, async (req: any, res) => {
+    try {
+      const interests = await storage.getUserInterests(req.user.userId);
+      
+      // Calculate investment statistics
+      const totalInterests = interests.length;
+      const acceptedInterests = interests.filter((interest: any) => interest.status === 'accepted').length;
+      const pendingInterests = interests.filter((interest: any) => interest.status === 'pending').length;
+      const rejectedInterests = interests.filter((interest: any) => interest.status === 'rejected').length;
+      
+      // Calculate success rate
+      const successRate = totalInterests > 0 ? Math.round((acceptedInterests / totalInterests) * 100) : 0;
+      
+      // Calculate portfolio value (estimated based on accepted investments)
+      const portfolioValue = acceptedInterests * 250000; // ₹2.5L per accepted investment (average)
+      
+      // Get recent activity
+      const recentInterests = interests
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5);
+      
+      const stats = {
+        totalInterests,
+        acceptedInterests,
+        pendingInterests,
+        rejectedInterests,
+        successRate,
+        portfolioValue,
+        recentActivity: recentInterests,
+        monthlyGrowth: 12, // Percentage growth this month
+        totalInvested: portfolioValue,
+        averageInvestment: acceptedInterests > 0 ? portfolioValue / acceptedInterests : 0
+      };
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Get investment stats error:", error);
+      res.status(500).json({ message: "Failed to get investment stats" });
+    }
+  });
+
+  app.get("/api/users/me/saved", authenticateToken, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.userId);
+      
+      if (user?.userType === 'entrepreneur') {
+        // For entrepreneurs, return their own posts that they might want to save/reference
+        const posts = await storage.getUserPosts(req.user.userId);
+        const savedPosts = posts.map((post: any) => ({
+          id: post.id,
+          type: 'post',
+          title: post.title || 'Untitled Post',
+          category: post.category,
+          fundingMin: post.fundingMin,
+          fundingMax: post.fundingMax,
+          expectedRoi: post.expectedRoi,
+          createdAt: post.createdAt,
+          views: post.views || 0,
+          likes: post.likes || 0,
+          comments: post.comments || 0
+        }));
+        
+        res.json(savedPosts);
+      } else {
+        // For investors, return posts they've liked or shown interest in
+        const interests = await storage.getUserInterests(req.user.userId);
+        const savedPosts = await Promise.all(
+          interests.map(async (interest: any) => {
+            let post = null;
+            let business = null;
+            
+            if (interest.postId) {
+              post = await storage.getPost(interest.postId);
+            } else if (interest.listingId) {
+              business = await storage.getBusinessListing(interest.listingId);
+            }
+            
+            if (post) {
+              return {
+                id: post.id,
+                type: 'post',
+                title: post.title || 'Investment Opportunity',
+                category: post.category,
+                fundingMin: post.fundingMin,
+                fundingMax: post.fundingMax,
+                expectedRoi: post.expectedRoi,
+                createdAt: post.createdAt,
+                savedAt: interest.createdAt,
+                status: interest.status,
+                interestId: interest.id
+              };
+            } else if (business) {
+              return {
+                id: business.id,
+                type: 'business',
+                title: business.title || 'Business Listing',
+                category: business.category,
+                fundingMin: business.fundingMin,
+                fundingMax: business.fundingMax,
+                expectedRoi: business.expectedRoi,
+                createdAt: business.createdAt,
+                savedAt: interest.createdAt,
+                status: interest.status,
+                interestId: interest.id
+              };
+            }
+            return null;
+          })
+        );
+        
+        // Filter out null values and sort by saved date
+        const validSavedPosts = savedPosts
+          .filter(post => post !== null)
+          .sort((a: any, b: any) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
+        
+        res.json(validSavedPosts);
+      }
+    } catch (error) {
+      console.error("Get saved opportunities error:", error);
+      res.status(500).json({ message: "Failed to get saved opportunities" });
+    }
+  });
+
+  app.delete("/api/users/me/saved/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.userId);
+      const itemId = req.params.id;
+      
+      if (user?.userType === 'entrepreneur') {
+        // For entrepreneurs, we can't really "unsave" their own posts
+        // This would be more like archiving or hiding
+        res.json({ message: "Item removed from saved list" });
+      } else {
+        // For investors, remove the interest (which effectively unsaves the item)
+        const interests = await storage.getUserInterests(req.user.userId);
+        const interest = interests.find((i: any) => 
+          (i.postId === itemId || i.listingId === itemId)
+        );
+        
+        if (interest) {
+          await storage.deleteInterest(interest.id);
+          res.json({ message: "Item removed from saved list" });
+        } else {
+          res.status(404).json({ message: "Item not found in saved list" });
+        }
+      }
+    } catch (error) {
+      console.error("Remove from saved error:", error);
+      res.status(500).json({ message: "Failed to remove item from saved list" });
+    }
+  });
+
+  app.get("/api/users/me/analytics", authenticateToken, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.userId);
+      const timeRange = req.query.timeRange || '30d';
+      
+      if (user?.userType === 'entrepreneur') {
+        // Get entrepreneur analytics (posts, views, engagement)
+        const posts = await storage.getUserPosts(req.user.userId);
+        const totalViews = posts.reduce((sum: number, post: any) => sum + (post.views || 0), 0);
+        const totalLikes = posts.reduce((sum: number, post: any) => sum + (post.likes || 0), 0);
+        const totalComments = posts.reduce((sum: number, post: any) => sum + (post.comments || 0), 0);
+        
+        const analytics = {
+          overview: {
+            totalViews,
+            totalLikes,
+            totalComments,
+            engagementRate: posts.length > 0 ? Math.round(((totalLikes + totalComments) / posts.length) * 100) : 0,
+            growthRate: 15
+          },
+          posts: posts.slice(0, 5).map((post: any) => ({
+            id: post.id,
+            title: post.title || 'Untitled Post',
+            date: new Date(post.createdAt).toLocaleDateString(),
+            views: post.views || 0,
+            likes: post.likes || 0,
+            comments: post.comments || 0
+          })),
+          demographics: {
+            ageGroups: { "18-25": 25, "26-35": 45, "36-45": 20, "46+": 10 },
+            locations: { "Mumbai": 30, "Delhi": 25, "Bangalore": 20, "Other": 25 }
+          }
+        };
+        
+        res.json(analytics);
+      } else {
+        // Get investor analytics (investment portfolio)
+        const interests = await storage.getUserInterests(req.user.userId);
+        const acceptedInterests = interests.filter((interest: any) => interest.status === 'accepted');
+        const totalInvested = acceptedInterests.length * 250000; // ₹2.5L per investment
+        const successRate = interests.length > 0 ? Math.round((acceptedInterests.length / interests.length) * 100) : 0;
+        
+                 // Calculate real portfolio metrics based on actual investments
+         const portfolioData = await calculatePortfolioMetrics(acceptedInterests);
+         
+         const analytics = {
+           overview: {
+             totalInvested,
+             totalInterests: interests.length,
+             acceptedInvestments: acceptedInterests.length,
+             successRate,
+             portfolioGrowth: portfolioData.portfolioGrowth
+           },
+           investments: acceptedInterests.slice(0, 5).map((interest: any) => ({
+             id: interest.id,
+             title: interest.postId ? 'Investment Opportunity' : 'Business Listing',
+             date: new Date(interest.createdAt).toLocaleDateString(),
+             amount: 250000,
+             status: 'Active',
+             returns: portfolioData.averageReturn + '%'
+           })),
+           portfolio: portfolioData
+         };
+        
+        res.json(analytics);
+      }
+    } catch (error) {
+      console.error("Get analytics error:", error);
+      res.status(500).json({ message: "Failed to get analytics" });
+    }
+  });
+
   // Rating routes
   app.post("/api/ratings", authenticateToken, async (req: any, res) => {
     try {
@@ -709,6 +1046,101 @@ export async function registerRoutes(app: Express, notificationService?: any): P
     } catch (error) {
       console.error("Get reports error:", error);
       res.status(500).json({ message: "Failed to get reports" });
+    }
+  });
+
+  // Call routes
+  app.post("/api/calls/start", authenticateToken, async (req: any, res) => {
+    try {
+      const { receiverId } = req.body;
+      const caller = await storage.getUser(req.user.userId);
+      
+      if (!caller) {
+        return res.status(404).json({ message: "Caller not found" });
+      }
+
+      const callId = `call_${Date.now()}_${req.user.userId}_${receiverId}`;
+      
+      // Send call notification to receiver
+      const notificationService = (req.app as any).notificationService;
+      if (notificationService) {
+        notificationService.sendCallNotification(receiverId, {
+          type: 'incoming_call',
+          callerId: req.user.userId,
+          callerName: caller.fullName || caller.email,
+          callId: callId,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      
+      res.json({ 
+        callId,
+        message: "Call initiated",
+        caller: {
+          id: caller.id,
+          name: caller.fullName || caller.email
+        }
+      });
+    } catch (error) {
+      console.error("Start call error:", error);
+      res.status(500).json({ message: "Failed to start call" });
+    }
+  });
+
+  app.post("/api/calls/respond", authenticateToken, async (req: any, res) => {
+    try {
+      const { callId, response, callerId } = req.body; // response: 'accept' | 'reject'
+      const responder = await storage.getUser(req.user.userId);
+      
+      if (!responder) {
+        return res.status(404).json({ message: "Responder not found" });
+      }
+
+      // Send response to caller
+      const notificationService = (req.app as any).notificationService;
+      if (notificationService) {
+        notificationService.sendCallNotification(callerId, {
+          type: response === 'accept' ? 'call_accepted' : 'call_rejected',
+          callerId: req.user.userId,
+          callerName: responder.fullName || responder.email,
+          callId: callId,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      
+      res.json({ 
+        message: `Call ${response}ed`,
+        responder: {
+          id: responder.id,
+          name: responder.fullName || responder.email
+        }
+      });
+    } catch (error) {
+      console.error("Call response error:", error);
+      res.status(500).json({ message: "Failed to respond to call" });
+    }
+  });
+
+  app.post("/api/calls/end", authenticateToken, async (req: any, res) => {
+    try {
+      const { callId, otherUserId } = req.body;
+      
+      // Send call ended notification to other user
+      const notificationService = (req.app as any).notificationService;
+      if (notificationService) {
+        notificationService.sendCallNotification(otherUserId, {
+          type: 'call_ended',
+          callerId: req.user.userId,
+          callerName: 'User',
+          callId: callId,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      
+      res.json({ message: "Call ended" });
+    } catch (error) {
+      console.error("End call error:", error);
+      res.status(500).json({ message: "Failed to end call" });
     }
   });
 

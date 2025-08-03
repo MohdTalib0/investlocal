@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { ArrowLeft, TrendingUp, Eye, Heart, MessageSquare, DollarSign, Users, Calendar, BarChart3, PieChart, Activity } from "lucide-react";
+import { ArrowLeft, TrendingUp, Eye, Heart, MessageSquare, DollarSign, Users, Calendar, BarChart3, PieChart, Activity, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -90,10 +90,10 @@ export default function AnalyticsPage() {
               Start creating posts and engaging with the community to see your analytics here.
             </p>
             <Button 
-              onClick={() => setLocation("/dashboard")}
+              onClick={() => setLocation(user?.userType === 'entrepreneur' ? "/create-post" : "/dashboard")}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              Start Creating Content
+              {user?.userType === 'entrepreneur' ? 'Create Post' : 'Explore Opportunities'}
             </Button>
           </div>
         </div>
@@ -159,7 +159,7 @@ export default function AnalyticsPage() {
               Overview
             </TabsTrigger>
             <TabsTrigger value="posts" className="text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-              Posts
+              {user?.userType === 'entrepreneur' ? 'Posts' : 'Investments'}
             </TabsTrigger>
             <TabsTrigger value="insights" className="text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               Insights
@@ -169,61 +169,123 @@ export default function AnalyticsPage() {
                      <TabsContent value="overview" className="space-y-6 mt-6">
              {/* Key Metrics */}
              <div className="grid grid-cols-2 gap-4">
-               <Card className="bg-gray-900 border-gray-700">
-                 <CardContent className="p-4">
-                   <div className="flex items-center space-x-2 mb-2">
-                     <Eye className="h-4 w-4 text-blue-400" />
-                     <span className="text-gray-400 text-sm">Total Views</span>
-                   </div>
-                   <p className="text-2xl font-bold text-white">{data?.overview?.totalViews?.toLocaleString() || 0}</p>
-                   <div className="flex items-center mt-1">
-                     <TrendingUp className="h-3 w-3 text-green-400 mr-1" />
-                     <span className="text-green-400 text-xs">+{data?.overview?.growthRate || 0}%</span>
-                   </div>
-                 </CardContent>
-               </Card>
+               {user?.userType === 'entrepreneur' ? (
+                 <>
+                   <Card className="bg-gray-900 border-gray-700">
+                     <CardContent className="p-4">
+                       <div className="flex items-center space-x-2 mb-2">
+                         <Eye className="h-4 w-4 text-blue-400" />
+                         <span className="text-gray-400 text-sm">Total Views</span>
+                       </div>
+                       <p className="text-2xl font-bold text-white">{data?.overview?.totalViews?.toLocaleString() || 0}</p>
+                       <div className="flex items-center mt-1">
+                         <TrendingUp className="h-3 w-3 text-green-400 mr-1" />
+                         <span className="text-green-400 text-xs">+{data?.overview?.growthRate || 0}%</span>
+                       </div>
+                     </CardContent>
+                   </Card>
 
-               <Card className="bg-gray-900 border-gray-700">
-                 <CardContent className="p-4">
-                   <div className="flex items-center space-x-2 mb-2">
-                     <Heart className="h-4 w-4 text-red-400" />
-                     <span className="text-gray-400 text-sm">Total Likes</span>
-                   </div>
-                   <p className="text-2xl font-bold text-white">{data?.overview?.totalLikes || 0}</p>
-                   <div className="flex items-center mt-1">
-                     <TrendingUp className="h-3 w-3 text-green-400 mr-1" />
-                     <span className="text-green-400 text-xs">+0%</span>
-                   </div>
-                 </CardContent>
-               </Card>
+                   <Card className="bg-gray-900 border-gray-700">
+                     <CardContent className="p-4">
+                       <div className="flex items-center space-x-2 mb-2">
+                         <Heart className="h-4 w-4 text-red-400" />
+                         <span className="text-gray-400 text-sm">Total Likes</span>
+                       </div>
+                       <p className="text-2xl font-bold text-white">{data?.overview?.totalLikes || 0}</p>
+                       <div className="flex items-center mt-1">
+                         <TrendingUp className="h-3 w-3 text-green-400 mr-1" />
+                         <span className="text-green-400 text-xs">+0%</span>
+                       </div>
+                     </CardContent>
+                   </Card>
 
-               <Card className="bg-gray-900 border-gray-700">
-                 <CardContent className="p-4">
-                   <div className="flex items-center space-x-2 mb-2">
-                     <MessageSquare className="h-4 w-4 text-green-400" />
-                     <span className="text-gray-400 text-sm">Comments</span>
-                   </div>
-                   <p className="text-2xl font-bold text-white">{data?.overview?.totalComments || 0}</p>
-                   <div className="flex items-center mt-1">
-                     <TrendingUp className="h-3 w-3 text-green-400 mr-1" />
-                     <span className="text-green-400 text-xs">+0%</span>
-                   </div>
-                 </CardContent>
-               </Card>
+                   <Card className="bg-gray-900 border-gray-700">
+                     <CardContent className="p-4">
+                       <div className="flex items-center space-x-2 mb-2">
+                         <MessageSquare className="h-4 w-4 text-green-400" />
+                         <span className="text-gray-400 text-sm">Comments</span>
+                       </div>
+                       <p className="text-2xl font-bold text-white">{data?.overview?.totalComments || 0}</p>
+                       <div className="flex items-center mt-1">
+                         <TrendingUp className="h-3 w-3 text-green-400 mr-1" />
+                         <span className="text-green-400 text-xs">+0%</span>
+                       </div>
+                     </CardContent>
+                   </Card>
 
-               <Card className="bg-gray-900 border-gray-700">
-                 <CardContent className="p-4">
-                   <div className="flex items-center space-x-2 mb-2">
-                     <DollarSign className="h-4 w-4 text-yellow-400" />
-                     <span className="text-gray-400 text-sm">Engagement</span>
-                   </div>
-                   <p className="text-2xl font-bold text-white">{data?.overview?.engagementRate || 0}%</p>
-                   <div className="flex items-center mt-1">
-                     <TrendingUp className="h-3 w-3 text-green-400 mr-1" />
-                     <span className="text-green-400 text-xs">+0%</span>
-                   </div>
-                 </CardContent>
-               </Card>
+                   <Card className="bg-gray-900 border-gray-700">
+                     <CardContent className="p-4">
+                       <div className="flex items-center space-x-2 mb-2">
+                         <DollarSign className="h-4 w-4 text-yellow-400" />
+                         <span className="text-gray-400 text-sm">Engagement</span>
+                       </div>
+                       <p className="text-2xl font-bold text-white">{data?.overview?.engagementRate || 0}%</p>
+                       <div className="flex items-center mt-1">
+                         <TrendingUp className="h-3 w-3 text-green-400 mr-1" />
+                         <span className="text-green-400 text-xs">+0%</span>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 </>
+               ) : (
+                 <>
+                   <Card className="bg-gray-900 border-gray-700">
+                     <CardContent className="p-4">
+                       <div className="flex items-center space-x-2 mb-2">
+                         <DollarSign className="h-4 w-4 text-green-400" />
+                         <span className="text-gray-400 text-sm">Total Invested</span>
+                       </div>
+                       <p className="text-2xl font-bold text-white">₹{(data?.overview?.totalInvested / 100000).toFixed(1)}L</p>
+                       <div className="flex items-center mt-1">
+                         <TrendingUp className="h-3 w-3 text-green-400 mr-1" />
+                         <span className="text-green-400 text-xs">+{data?.overview?.portfolioGrowth || 0}%</span>
+                       </div>
+                     </CardContent>
+                   </Card>
+
+                   <Card className="bg-gray-900 border-gray-700">
+                     <CardContent className="p-4">
+                       <div className="flex items-center space-x-2 mb-2">
+                         <Users className="h-4 w-4 text-blue-400" />
+                         <span className="text-gray-400 text-sm">Total Interests</span>
+                       </div>
+                       <p className="text-2xl font-bold text-white">{data?.overview?.totalInterests || 0}</p>
+                       <div className="flex items-center mt-1">
+                         <CheckCircle className="h-3 w-3 text-green-400 mr-1" />
+                         <span className="text-green-400 text-xs">{data?.overview?.acceptedInvestments || 0} accepted</span>
+                       </div>
+                     </CardContent>
+                   </Card>
+
+                   <Card className="bg-gray-900 border-gray-700">
+                     <CardContent className="p-4">
+                       <div className="flex items-center space-x-2 mb-2">
+                         <CheckCircle className="h-4 w-4 text-green-400" />
+                         <span className="text-gray-400 text-sm">Success Rate</span>
+                       </div>
+                       <p className="text-2xl font-bold text-white">{data?.overview?.successRate || 0}%</p>
+                       <div className="flex items-center mt-1">
+                         <TrendingUp className="h-3 w-3 text-green-400 mr-1" />
+                         <span className="text-green-400 text-xs">+5%</span>
+                       </div>
+                     </CardContent>
+                   </Card>
+
+                   <Card className="bg-gray-900 border-gray-700">
+                     <CardContent className="p-4">
+                       <div className="flex items-center space-x-2 mb-2">
+                         <Activity className="h-4 w-4 text-yellow-400" />
+                         <span className="text-gray-400 text-sm">Avg Return</span>
+                       </div>
+                       <p className="text-2xl font-bold text-white">12%</p>
+                       <div className="flex items-center mt-1">
+                         <TrendingUp className="h-3 w-3 text-green-400 mr-1" />
+                         <span className="text-green-400 text-xs">+2%</span>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 </>
+               )}
              </div>
 
             {/* Engagement Chart */}
@@ -243,44 +305,137 @@ export default function AnalyticsPage() {
           </TabsContent>
 
                      <TabsContent value="posts" className="space-y-6 mt-6">
-             {/* Top Performing Posts */}
-             <Card className="bg-gray-900 border-gray-700">
-               <CardHeader>
-                 <CardTitle className="text-white">Top Performing Posts</CardTitle>
-               </CardHeader>
-               <CardContent>
-                 {data?.posts && data.posts.length > 0 ? (
-                   <div className="space-y-4">
-                     {data.posts.map((post: any) => (
-                       <div key={post.id} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-                         <div className="flex-1">
-                           <h3 className="text-white font-medium">{post.title}</h3>
-                           <p className="text-gray-400 text-sm">{post.date}</p>
+             {user?.userType === 'entrepreneur' ? (
+               /* Top Performing Posts */
+               <Card className="bg-gray-900 border-gray-700">
+                 <CardHeader>
+                   <CardTitle className="text-white">Top Performing Posts</CardTitle>
+                 </CardHeader>
+                 <CardContent>
+                   {data?.posts && data.posts.length > 0 ? (
+                     <div className="space-y-4">
+                       {data.posts.map((post: any) => (
+                         <div key={post.id} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                           <div className="flex-1">
+                             <h3 className="text-white font-medium">{post.title}</h3>
+                             <p className="text-gray-400 text-sm">{post.date}</p>
+                           </div>
+                           <div className="flex items-center space-x-4 text-sm">
+                             <div className="flex items-center space-x-1">
+                               <Eye className="h-3 w-3 text-gray-400" />
+                               <span className="text-gray-300">{post.views}</span>
+                             </div>
+                             <div className="flex items-center space-x-1">
+                               <Heart className="h-3 w-3 text-gray-400" />
+                               <span className="text-gray-300">{post.likes}</span>
+                             </div>
+                             <div className="flex items-center space-x-1">
+                               <MessageSquare className="h-3 w-3 text-gray-400" />
+                               <span className="text-gray-300">{post.comments}</span>
+                             </div>
+                           </div>
                          </div>
-                         <div className="flex items-center space-x-4 text-sm">
-                           <div className="flex items-center space-x-1">
-                             <Eye className="h-3 w-3 text-gray-400" />
-                             <span className="text-gray-300">{post.views}</span>
+                       ))}
+                     </div>
+                   ) : (
+                     <div className="text-center py-8">
+                       <p className="text-gray-400">No posts data available yet.</p>
+                     </div>
+                   )}
+                 </CardContent>
+               </Card>
+             ) : (
+               /* Investment Portfolio */
+               <>
+                 <Card className="bg-gray-900 border-gray-700">
+                   <CardHeader>
+                     <CardTitle className="text-white">Active Investments</CardTitle>
+                   </CardHeader>
+                   <CardContent>
+                     {data?.investments && data.investments.length > 0 ? (
+                       <div className="space-y-4">
+                         {data.investments.map((investment: any) => (
+                           <div key={investment.id} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                             <div className="flex-1">
+                               <h3 className="text-white font-medium">{investment.title}</h3>
+                               <p className="text-gray-400 text-sm">{investment.date}</p>
+                             </div>
+                             <div className="flex items-center space-x-4 text-sm">
+                               <div className="flex items-center space-x-1">
+                                 <DollarSign className="h-3 w-3 text-green-400" />
+                                 <span className="text-gray-300">₹{(investment.amount / 100000).toFixed(1)}L</span>
+                               </div>
+                               <div className="flex items-center space-x-1">
+                                 <Activity className="h-3 w-3 text-blue-400" />
+                                 <span className="text-gray-300">{investment.returns}</span>
+                               </div>
+                               <Badge variant="secondary" className="bg-green-600/20 text-green-400 border-green-600/30">
+                                 {investment.status}
+                               </Badge>
+                             </div>
                            </div>
-                           <div className="flex items-center space-x-1">
-                             <Heart className="h-3 w-3 text-gray-400" />
-                             <span className="text-gray-300">{post.likes}</span>
+                         ))}
+                       </div>
+                     ) : (
+                       <div className="text-center py-8">
+                         <p className="text-gray-400">No active investments yet.</p>
+                         <Button 
+                           onClick={() => setLocation("/dashboard")}
+                           className="mt-4 bg-blue-600 hover:bg-blue-700"
+                         >
+                           Explore Opportunities
+                         </Button>
+                       </div>
+                     )}
+                   </CardContent>
+                 </Card>
+
+                 <Card className="bg-gray-900 border-gray-700">
+                   <CardHeader>
+                     <CardTitle className="text-white">Portfolio Allocation</CardTitle>
+                   </CardHeader>
+                   <CardContent>
+                     {data?.portfolio ? (
+                       <div className="space-y-4">
+                         <div>
+                           <h4 className="text-white font-medium mb-2">Sector Distribution</h4>
+                           <div className="space-y-2">
+                             {Object.entries(data.portfolio.sectors || {}).map(([sector, percentage]) => (
+                               <div key={sector} className="flex items-center justify-between">
+                                 <span className="text-gray-300">{sector}</span>
+                                 <div className="flex items-center space-x-2">
+                                   <div className="w-20 bg-gray-700 rounded-full h-2">
+                                     <div 
+                                       className="bg-blue-500 h-2 rounded-full" 
+                                       style={{ width: `${percentage}%` }}
+                                     ></div>
+                                   </div>
+                                   <span className="text-gray-400 text-sm">{percentage}%</span>
+                                 </div>
+                               </div>
+                             ))}
                            </div>
-                           <div className="flex items-center space-x-1">
-                             <MessageSquare className="h-3 w-3 text-gray-400" />
-                             <span className="text-gray-300">{post.comments}</span>
+                         </div>
+                         <div className="grid grid-cols-2 gap-4 pt-4">
+                           <div>
+                             <p className="text-gray-400 text-sm">Risk Level</p>
+                             <p className="text-white font-medium">{data.portfolio.riskLevel}</p>
+                           </div>
+                           <div>
+                             <p className="text-gray-400 text-sm">Average Return</p>
+                             <p className="text-white font-medium">{data.portfolio.averageReturn}</p>
                            </div>
                          </div>
                        </div>
-                     ))}
-                   </div>
-                 ) : (
-                   <div className="text-center py-8">
-                     <p className="text-gray-400">No posts data available yet.</p>
-                   </div>
-                 )}
-               </CardContent>
-             </Card>
+                     ) : (
+                       <div className="text-center py-8">
+                         <p className="text-gray-400">Portfolio data will appear here once you make investments.</p>
+                       </div>
+                     )}
+                   </CardContent>
+                 </Card>
+               </>
+             )}
            </TabsContent>
 
                      <TabsContent value="insights" className="space-y-6 mt-6">

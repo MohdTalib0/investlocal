@@ -78,6 +78,7 @@ export default function ProfilePage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isEmailPreferencesOpen, setIsEmailPreferencesOpen] = useState(false);
+
   
   // Settings state
   const [settings, setSettings] = useState({
@@ -95,6 +96,13 @@ export default function ProfilePage() {
     appearance: {
       darkMode: true,
       compactView: false
+    },
+    investment: {
+      autoMatch: true,
+      riskLevel: 'moderate',
+      investmentRange: '1L-10L',
+      preferredSectors: ['tech', 'food'],
+      showAdvancedMetrics: false
     }
   });
   const { toast } = useToast();
@@ -123,6 +131,15 @@ export default function ProfilePage() {
     queryKey: ["/api/users/me/interests"],
     queryFn: async () => {
       const response = await authenticatedApiRequest("GET", "/api/users/me/interests");
+      return response.json();
+    },
+    enabled: user?.userType === 'investor',
+  });
+
+  const { data: investmentStats } = useQuery({
+    queryKey: ["/api/users/me/investment-stats"],
+    queryFn: async () => {
+      const response = await authenticatedApiRequest("GET", "/api/users/me/investment-stats");
       return response.json();
     },
     enabled: user?.userType === 'investor',
@@ -319,6 +336,53 @@ export default function ProfilePage() {
     });
   };
 
+  const handleInvestmentToggle = (key: keyof typeof settings.investment) => {
+    setSettings(prev => ({
+      ...prev,
+      investment: {
+        ...prev.investment,
+        [key]: !prev.investment[key]
+      }
+    }));
+    
+    toast({
+      title: "Investment Settings Updated",
+      description: `${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} ${!settings.investment[key] ? 'enabled' : 'disabled'}.`,
+    });
+  };
+
+  const handleRiskLevelChange = (value: string) => {
+    setSettings(prev => ({
+      ...prev,
+      investment: {
+        ...prev.investment,
+        riskLevel: value
+      }
+    }));
+    
+    toast({
+      title: "Risk Level Updated",
+      description: `Risk level set to ${value}`,
+      variant: "default",
+    });
+  };
+
+  const handleInvestmentRangeChange = (value: string) => {
+    setSettings(prev => ({
+      ...prev,
+      investment: {
+        ...prev.investment,
+        investmentRange: value
+      }
+    }));
+    
+    toast({
+      title: "Investment Range Updated",
+      description: `Investment range set to ${value}`,
+      variant: "default",
+    });
+  };
+
   const handleChangePassword = () => {
     setIsChangePasswordOpen(true);
   };
@@ -363,10 +427,7 @@ export default function ProfilePage() {
   };
 
   const handleHelpSupport = () => {
-    toast({
-      title: "Help & Support",
-      description: "Support portal will be available soon!",
-    });
+    setLocation("/help");
   };
 
   const handlePrivacyPolicy = () => {
@@ -395,14 +456,37 @@ export default function ProfilePage() {
         tertiaryLabel: "Success Rate",
       };
     } else {
+      // Use real investment stats if available, otherwise calculate from interests
+      if (investmentStats) {
+        const portfolioValue = investmentStats.portfolioValue > 0 
+          ? `₹${(investmentStats.portfolioValue / 100000).toFixed(1)}L` 
+          : "₹0";
+        
       return {
-        primary: userInterests.length,
+          primary: investmentStats.totalInterests,
         primaryLabel: "Investments",
-        secondary: 85,
+          secondary: investmentStats.successRate,
         secondaryLabel: "Success Rate",
-        tertiary: "₹12L",
+          tertiary: portfolioValue,
+          tertiaryLabel: "Portfolio",
+        };
+      } else {
+        // Fallback calculation from interests
+        const totalInterests = userInterests.length;
+        const acceptedInterests = userInterests.filter((interest: any) => interest.status === 'accepted').length;
+        const successRate = totalInterests > 0 ? Math.round((acceptedInterests / totalInterests) * 100) : 0;
+        
+        const portfolioValue = acceptedInterests > 0 ? `₹${acceptedInterests * 2.5}L` : "₹0";
+        
+        return {
+          primary: totalInterests,
+          primaryLabel: "Investments",
+          secondary: successRate,
+          secondaryLabel: "Success Rate",
+          tertiary: portfolioValue,
         tertiaryLabel: "Portfolio",
       };
+      }
     }
   };
 
@@ -921,6 +1005,74 @@ export default function ProfilePage() {
 
                 <Separator className="bg-gray-700" />
 
+                {/* Investment Settings - Only for Investors */}
+                {user?.userType === 'investor' && (
+                  <>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-3 flex items-center">
+                        <DollarSign className="h-5 w-5 mr-2" />
+                        Investment Preferences
+                      </h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-white font-medium">Auto-Match Opportunities</p>
+                            <p className="text-gray-400 text-sm">Automatically match with relevant opportunities</p>
+                          </div>
+                          <Switch 
+                            checked={settings.investment.autoMatch}
+                            onCheckedChange={() => handleInvestmentToggle('autoMatch')}
+                          />
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-white font-medium">Advanced Metrics</p>
+                            <p className="text-gray-400 text-sm">Show detailed financial metrics</p>
+                          </div>
+                          <Switch 
+                            checked={settings.investment.showAdvancedMetrics}
+                            onCheckedChange={() => handleInvestmentToggle('showAdvancedMetrics')}
+                          />
+                        </div>
+                        
+                        <div>
+                          <p className="text-white font-medium mb-2">Risk Level</p>
+                          <Select value={settings.investment.riskLevel} onValueChange={handleRiskLevelChange}>
+                            <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-gray-800 border-gray-600">
+                              <SelectItem value="conservative">Conservative</SelectItem>
+                              <SelectItem value="moderate">Moderate</SelectItem>
+                              <SelectItem value="aggressive">Aggressive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div>
+                          <p className="text-white font-medium mb-2">Investment Range</p>
+                          <Select value={settings.investment.investmentRange} onValueChange={handleInvestmentRangeChange}>
+                            <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-gray-800 border-gray-600">
+                              <SelectItem value="10K-50K">₹10K - ₹50K</SelectItem>
+                              <SelectItem value="50K-1L">₹50K - ₹1L</SelectItem>
+                              <SelectItem value="1L-5L">₹1L - ₹5L</SelectItem>
+                              <SelectItem value="1L-10L">₹1L - ₹10L</SelectItem>
+                              <SelectItem value="5L-25L">₹5L - ₹25L</SelectItem>
+                              <SelectItem value="10L-50L">₹10L - ₹50L</SelectItem>
+                              <SelectItem value="50L+">₹50L+</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                    <Separator className="bg-gray-700" />
+                  </>
+                )}
+
                 {/* Data & Storage */}
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-3 flex items-center">
@@ -1167,6 +1319,8 @@ export default function ProfilePage() {
               </form>
             </DialogContent>
           </Dialog>
+
+
         </div>
 
         {/* Profile Info */}
@@ -1254,22 +1408,21 @@ export default function ProfilePage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-gray-400">Investment Range</span>
-                <span className="font-medium text-white">₹1L - ₹10L</span>
+                <span className="font-medium text-white">₹{settings.investment.investmentRange}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-400">Preferred Sectors</span>
                 <div className="flex space-x-1">
-                  <Badge variant="secondary" className="bg-blue-600/20 text-blue-400 text-xs border-blue-600/30">
-                    Tech
+                  {settings.investment.preferredSectors.map((sector, index) => (
+                    <Badge key={index} variant="secondary" className="bg-blue-600/20 text-blue-400 text-xs border-blue-600/30">
+                      {sector.charAt(0).toUpperCase() + sector.slice(1)}
                   </Badge>
-                  <Badge variant="secondary" className="bg-green-600/20 text-green-400 text-xs border-green-600/30">
-                    Food
-                  </Badge>
+                  ))}
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-400">Risk Appetite</span>
-                <span className="font-medium text-white">Moderate</span>
+                <span className="font-medium text-white capitalize">{settings.investment.riskLevel}</span>
               </div>
             </div>
           </div>
@@ -1281,7 +1434,7 @@ export default function ProfilePage() {
           <Button 
             variant="outline"
             className="w-full justify-between h-auto p-4 border-gray-700 hover:bg-gray-800 bg-gray-800"
-            onClick={() => setLocation("/dashboard")}
+            onClick={() => setLocation(user?.userType === 'entrepreneur' ? "/dashboard" : "/interests")}
           >
             <div className="flex items-center space-x-3">
               <List className="h-5 w-5 text-gray-400" />
@@ -1332,7 +1485,8 @@ export default function ProfilePage() {
 
           <Button 
             variant="outline"
-            className="w-full justify-between h-auto p-4 border-gray-700 hover: bg-gray-800"
+            className="w-full justify-between h-auto p-4 border-gray-700 hover:bg-gray-800 bg-gray-800"
+            onClick={handleHelpSupport}
           >
             <div className="flex items-center space-x-3">
               <HelpCircle className="h-5 w-5 text-gray-400" />

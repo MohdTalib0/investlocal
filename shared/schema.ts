@@ -14,6 +14,15 @@ export const users = pgTable("users", {
   isVerified: boolean("is_verified").default(false),
   avatar: text("avatar"),
   bio: text("bio"),
+  
+  // Investment preferences (for investors)
+  investmentAmount: text("investment_amount"),
+  riskTolerance: text("risk_tolerance"),
+  preferredSectors: jsonb("preferred_sectors").$type<string[]>().default([]),
+  investmentHorizon: text("investment_horizon"),
+  experienceLevel: text("experience_level"),
+  investmentGoals: jsonb("investment_goals").$type<string[]>().default([]),
+  
   createdAt: timestamp("created_at").defaultNow(),
 });
 

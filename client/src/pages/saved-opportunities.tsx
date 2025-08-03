@@ -63,32 +63,29 @@ export default function SavedOpportunitiesPage() {
   };
 
   const handleViewItem = (item: any) => {
-    if (item.type === "investment") {
-      setLocation(`/post/${item.id}`);
-    } else {
-      setLocation(`/post/${item.id}`);
-    }
+    setLocation(`/opportunity/${item.id}`);
   };
 
   const handleShare = (item: any) => {
+    const shareUrl = window.location.origin + `/opportunity/${item.id}`;
     if (navigator.share) {
       navigator.share({
         title: item.title,
-        text: item.content.substring(0, 100) + '...',
-        url: window.location.origin + `/post/${item.id}`
+        text: `Check out this ${item.type} opportunity on InvestLocal`,
+        url: shareUrl
       }).catch(() => {
         // Fallback to copy link
-        navigator.clipboard.writeText(window.location.origin + `/post/${item.id}`);
+        navigator.clipboard.writeText(shareUrl);
         toast({
           title: "Link Copied!",
-          description: "Post link has been copied to clipboard.",
+          description: "Opportunity link has been copied to clipboard.",
         });
       });
     } else {
-      navigator.clipboard.writeText(window.location.origin + `/post/${item.id}`);
+      navigator.clipboard.writeText(shareUrl);
       toast({
         title: "Link Copied!",
-        description: "Post link has been copied to clipboard.",
+        description: "Opportunity link has been copied to clipboard.",
       });
     }
   };
@@ -97,16 +94,15 @@ export default function SavedOpportunitiesPage() {
   const filteredData = data
     .filter((item: any) => {
       const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.author.toLowerCase().includes(searchTerm.toLowerCase());
+                           (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesFilter = filterType === "all" || item.type === filterType;
       return matchesSearch && matchesFilter;
     })
     .sort((a: any, b: any) => {
       if (sortBy === "recent") {
-        return new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime();
+        return new Date(b.savedAt || b.createdAt).getTime() - new Date(a.savedAt || a.createdAt).getTime();
       } else if (sortBy === "popular") {
-        return b.views - a.views;
+        return (b.views || 0) - (a.views || 0);
       } else if (sortBy === "title") {
         return a.title.localeCompare(b.title);
       }
@@ -189,8 +185,8 @@ export default function SavedOpportunitiesPage() {
             </SelectTrigger>
             <SelectContent className="bg-gray-800 border-gray-600">
               <SelectItem value="all">All Items</SelectItem>
-              <SelectItem value="investment">Investment</SelectItem>
-              <SelectItem value="community">Community</SelectItem>
+              <SelectItem value="post">Investment Posts</SelectItem>
+              <SelectItem value="business">Business Listings</SelectItem>
             </SelectContent>
           </Select>
           
@@ -239,59 +235,74 @@ export default function SavedOpportunitiesPage() {
                       <Badge 
                         variant="secondary" 
                         className={`${
-                          item.type === 'investment' 
+                          item.type === 'post' 
                             ? 'bg-blue-600/20 text-blue-400 border-blue-600/30' 
                             : 'bg-green-600/20 text-green-400 border-green-600/30'
                         }`}
                       >
-                        {item.type === 'investment' ? 'Investment' : 'Community'}
+                        {item.type === 'post' ? 'Investment' : 'Business'}
                       </Badge>
                       {item.category && (
                         <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
                           {item.category}
                         </Badge>
                       )}
+                      {item.status && (
+                        <Badge 
+                          variant="secondary" 
+                          className={`${
+                            item.status === 'accepted' 
+                              ? 'bg-green-600/20 text-green-400 border-green-600/30'
+                              : item.status === 'pending'
+                              ? 'bg-yellow-600/20 text-yellow-400 border-yellow-600/30'
+                              : 'bg-red-600/20 text-red-400 border-red-600/30'
+                          }`}
+                        >
+                          {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                        </Badge>
+                      )}
                     </div>
                     
                     <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
-                    <p className="text-gray-300 text-sm mb-3 line-clamp-2">{item.content}</p>
                     
                     <div className="flex items-center space-x-4 text-sm text-gray-400 mb-3">
-                      <span>{item.author}</span>
-                      {item.location && (
+                      <span>{getTimeAgo(item.savedAt || item.createdAt)}</span>
+                      {item.fundingMin && item.fundingMax && (
                         <>
                           <span>•</span>
-                          <span>{item.location}</span>
+                          <span>₹{item.fundingMin?.toLocaleString()}-{item.fundingMax?.toLocaleString()}</span>
                         </>
                       )}
-                      <span>•</span>
-                      <span>{getTimeAgo(item.savedAt)}</span>
+                      {item.expectedRoi && (
+                        <>
+                          <span>•</span>
+                          <span>{item.expectedRoi}% ROI</span>
+                        </>
+                      )}
                     </div>
-
-                    {item.type === 'investment' && (
-                      <div className="flex items-center space-x-4 text-sm text-gray-400 mb-3">
-                        <span>₹{item.fundingMin?.toLocaleString()}-{item.fundingMax?.toLocaleString()}</span>
-                        <span>•</span>
-                        <span>{item.equity}% equity</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 text-sm text-gray-400">
-                    <div className="flex items-center space-x-1">
-                      <Eye className="h-3 w-3" />
-                      <span>{item.views}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Heart className="h-3 w-3" />
-                      <span>{item.likes}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <MessageSquare className="h-3 w-3" />
-                      <span>{item.comments}</span>
-                    </div>
+                    {item.views !== undefined && (
+                      <div className="flex items-center space-x-1">
+                        <Eye className="h-3 w-3" />
+                        <span>{item.views}</span>
+                      </div>
+                    )}
+                    {item.likes !== undefined && (
+                      <div className="flex items-center space-x-1">
+                        <Heart className="h-3 w-3" />
+                        <span>{item.likes}</span>
+                      </div>
+                    )}
+                    {item.comments !== undefined && (
+                      <div className="flex items-center space-x-1">
+                        <MessageSquare className="h-3 w-3" />
+                        <span>{item.comments}</span>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex items-center space-x-2">

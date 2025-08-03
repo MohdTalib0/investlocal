@@ -19,6 +19,8 @@ import AdminDashboardPage from "@/pages/admin-dashboard";
 import UserProfilePage from "@/pages/user-profile";
 import AnalyticsPage from "@/pages/analytics";
 import SavedOpportunitiesPage from "@/pages/saved-opportunities";
+import HelpSupportPage from "@/pages/help-support";
+import InterestsPage from "@/pages/interests";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -78,6 +80,16 @@ function Router() {
       <Route path="/saved">
         <ProtectedRoute>
           <SavedOpportunitiesPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/help">
+        <ProtectedRoute>
+          <HelpSupportPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/interests">
+        <ProtectedRoute>
+          <InterestsPage />
         </ProtectedRoute>
       </Route>
       <Route path="/admin">
