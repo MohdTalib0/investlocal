@@ -127,59 +127,74 @@ export function useNotifications() {
     const currentUser = authService.getUser();
     if (!currentUser) return;
 
+    // Don't try to connect if we're not in a browser environment
+    if (typeof window === 'undefined') return;
+
     const wsUrl = process.env.NODE_ENV === 'production' 
       ? `wss://${window.location.host}/ws`
       : `ws://localhost:5000/ws`;
 
-    wsRef.current = new WebSocket(wsUrl);
+    try {
+      wsRef.current = new WebSocket(wsUrl);
 
-    wsRef.current.onopen = () => {
-      console.log('WebSocket connected for notifications');
-      // Send authentication
-      wsRef.current?.send(JSON.stringify({
-        type: 'auth',
-        userId: currentUser.id,
-        token: authService.getToken(),
-      }));
-    };
+      wsRef.current.onopen = () => {
+        console.log('WebSocket connected for notifications');
+        // Send authentication
+        wsRef.current?.send(JSON.stringify({
+          type: 'auth',
+          userId: currentUser.id,
+          token: authService.getToken(),
+        }));
+      };
 
-    wsRef.current.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'new_message' && data.senderId !== currentUser.id) {
-          handleNewMessage({
-            id: data.messageId,
-            senderId: data.senderId,
-            senderName: data.senderName,
-            content: data.content,
-            timestamp: data.timestamp,
-            conversationId: data.conversationId,
-          });
+      wsRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'new_message' && data.senderId !== currentUser.id) {
+            handleNewMessage({
+              id: data.messageId,
+              senderId: data.senderId,
+              senderName: data.senderName,
+              content: data.content,
+              timestamp: data.timestamp,
+              conversationId: data.conversationId,
+            });
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
         }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
+      };
 
-    wsRef.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+      wsRef.current.onerror = (error) => {
+        console.warn('WebSocket connection failed - server may not be running');
+        // Don't log the full error object to avoid console spam
+      };
 
-    wsRef.current.onclose = () => {
-      console.log('WebSocket disconnected');
-      // Reconnect after 5 seconds
-      setTimeout(() => {
-        initializeWebSocket();
-      }, 5000);
-    };
-  }, [handleNewMessage]);
+      wsRef.current.onclose = (event) => {
+        console.log('WebSocket disconnected');
+        // Only reconnect if it wasn't a clean close and we're still enabled
+        if (event.code !== 1000 && settings.enabled) {
+          setTimeout(() => {
+            initializeWebSocket();
+          }, 5000);
+        }
+      };
+    } catch (error) {
+      console.warn('Failed to create WebSocket connection:', error);
+    }
+  }, [handleNewMessage, settings.enabled]);
 
   // Initialize notifications
   useEffect(() => {
     if (settings.enabled) {
       requestPermission();
       initializeWebSocket();
+    } else {
+      // Close WebSocket if notifications are disabled
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
     }
 
     return () => {
