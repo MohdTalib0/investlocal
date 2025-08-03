@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 
@@ -10,12 +10,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Bell, Plus, MessageSquare, DollarSign, Heart, Eye, Share2, MoreHorizontal, ThumbsUp, MessageCircle, Send, Copy, Bookmark, Flag, Trash2 } from "lucide-react";
+import { Bell, Plus, MessageSquare, DollarSign, Heart, Eye, Share2, MoreHorizontal, ThumbsUp, MessageCircle, Send, Copy, Bookmark, Flag, Trash2, Lightbulb } from "lucide-react";
 import { authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { useOnboarding } from "@/hooks/use-onboarding";
+import { useFirstTimeGuidance } from "@/hooks/use-first-time-guidance";
 
 import BottomNavigation from "@/components/bottom-navigation";
 import Logo from "@/components/logo";
+import FirstTimeGuidance from "@/components/first-time-guidance";
 import { useNotificationContext } from "@/contexts/NotificationContext";
 
 import { Post } from "@shared/schema";
@@ -33,6 +36,9 @@ export default function UnifiedDashboard() {
   const queryClient = useQueryClient();
   const user = authService.getUser();
   const { unreadCount, notifications } = useNotificationContext();
+  const { shouldShowOnboarding, isLoading: onboardingLoading } = useOnboarding();
+  const { showGuidance, isLoading: guidanceLoading, markGuidanceSeen, setShowGuidance } = useFirstTimeGuidance();
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
   // Helper function to get time ago
   const getTimeAgo = (date: Date): string => {
@@ -57,6 +63,19 @@ export default function UnifiedDashboard() {
     }
     return amount.toString();
   };
+
+  // Handle onboarding redirect
+  useEffect(() => {
+    if (shouldShowOnboarding() && !onboardingLoading) {
+      setShouldRedirect(true);
+    }
+  }, [shouldShowOnboarding, onboardingLoading, user, user?.isOnboardingComplete]);
+
+  useEffect(() => {
+    if (shouldRedirect) {
+      setLocation("/onboarding-wizard");
+    }
+  }, [shouldRedirect, setLocation]);
 
   // Fetch posts (investment and community)
   const { data: posts = [], isLoading: postsLoading } = useQuery({
@@ -1578,7 +1597,7 @@ export default function UnifiedDashboard() {
     );
   };
 
-  if (postsLoading) {
+  if (postsLoading || onboardingLoading) {
     return (
       <div className="min-h-screen bg-black">
         <div className="flex items-center justify-center h-64">
@@ -1603,6 +1622,15 @@ export default function UnifiedDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowGuidance(true)}
+              className="text-white hover:bg-blue-500/20"
+              title="Show Tips & Guidance"
+            >
+              <Lightbulb className="h-5 w-5" />
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button 
@@ -1706,7 +1734,11 @@ export default function UnifiedDashboard() {
         </div>
       </div>
 
-      
+      {/* First Time Guidance */}
+      <FirstTimeGuidance 
+        onClose={markGuidanceSeen}
+        isVisible={showGuidance && !shouldShowOnboarding() && !shouldRedirect && !guidanceLoading}
+      />
 
       {/* Category Filter */}
         <div className="px-6 py-4">

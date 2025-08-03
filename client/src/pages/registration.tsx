@@ -72,7 +72,7 @@ export default function RegistrationPage() {
         title: "Registration successful!",
         description: "Welcome to InvestLocal",
       });
-      setLocation("/dashboard");
+      setLocation("/onboarding-wizard");
     } catch (error) {
       console.error("Registration error:", error);
       toast({

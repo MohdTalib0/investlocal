@@ -321,6 +321,16 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         investmentHorizon: user.investmentHorizon,
         experienceLevel: user.experienceLevel,
         investmentGoals: user.investmentGoals,
+        // Business interests (for entrepreneurs)
+        businessInterests: user.businessInterests,
+        businessStage: user.businessStage,
+        // Onboarding status
+        isOnboardingComplete: user.isOnboardingComplete,
+        // First-time guidance and feature introduction tracking
+        hasSeenFirstTimeGuidance: user.hasSeenFirstTimeGuidance,
+        hasSeenFeatureIntroduction: user.hasSeenFeatureIntroduction,
+        completedGuidanceTips: user.completedGuidanceTips,
+        completedFeatureIntros: user.completedFeatureIntros,
       });
     } catch (error) {
       console.error("Get user error:", error);
@@ -351,10 +361,22 @@ export async function registerRoutes(app: Express, notificationService?: any): P
         investmentHorizon: user.investmentHorizon,
         experienceLevel: user.experienceLevel,
         investmentGoals: user.investmentGoals,
+        // Business interests (for entrepreneurs)
+        businessInterests: user.businessInterests,
+        businessStage: user.businessStage,
+        // Onboarding status
+        isOnboardingComplete: user.isOnboardingComplete,
+        // First-time guidance and feature introduction tracking
+        hasSeenFirstTimeGuidance: user.hasSeenFirstTimeGuidance,
+        hasSeenFeatureIntroduction: user.hasSeenFeatureIntroduction,
+        completedGuidanceTips: user.completedGuidanceTips,
+        completedFeatureIntros: user.completedFeatureIntros,
       });
     } catch (error) {
       console.error("Update user error:", error);
-      res.status(500).json({ message: "Failed to update user" });
+      console.error("Update data:", req.body);
+      console.error("User ID:", req.user.userId);
+      res.status(500).json({ message: "Failed to update user", error: error instanceof Error ? error.message : String(error) });
     }
   });
 

@@ -23,6 +23,19 @@ export const users = pgTable("users", {
   experienceLevel: text("experience_level"),
   investmentGoals: jsonb("investment_goals").$type<string[]>().default([]),
   
+  // Business interests (for entrepreneurs)
+  businessInterests: jsonb("business_interests").$type<string[]>().default([]),
+  businessStage: text("business_stage"),
+  
+  // Onboarding status
+  isOnboardingComplete: boolean("is_onboarding_complete").default(false),
+  
+  // First-time guidance and feature introduction tracking
+  hasSeenFirstTimeGuidance: boolean("has_seen_first_time_guidance").default(false),
+  hasSeenFeatureIntroduction: boolean("has_seen_feature_introduction").default(false),
+  completedGuidanceTips: jsonb("completed_guidance_tips").$type<string[]>().default([]),
+  completedFeatureIntros: jsonb("completed_feature_intros").$type<string[]>().default([]),
+  
   createdAt: timestamp("created_at").defaultNow(),
 });
 

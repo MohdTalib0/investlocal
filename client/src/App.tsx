@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { authService } from "./lib/auth";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import OnboardingPage from "@/pages/onboarding";
+import OnboardingWizardPage from "@/pages/onboarding-wizard";
 import UserTypeSelectionPage from "@/pages/user-type-selection";
 import RegistrationPage from "@/pages/registration";
 import DashboardPage from "@/pages/dashboard";
@@ -37,6 +38,7 @@ function Router() {
     <Switch>
       <Route path="/" component={authService.isAuthenticated() ? UnifiedDashboard : OnboardingPage} />
       <Route path="/onboarding" component={OnboardingPage} />
+      <Route path="/onboarding-wizard" component={OnboardingWizardPage} />
       <Route path="/user-type" component={UserTypeSelectionPage} />
       <Route path="/register" component={RegistrationPage} />
       <Route path="/dashboard">

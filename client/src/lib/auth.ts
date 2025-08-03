@@ -10,6 +10,19 @@ export interface User {
   bio?: string;
   city: string;
   phone: string;
+  investmentAmount?: string;
+  riskTolerance?: string;
+  preferredSectors?: string[];
+  investmentHorizon?: string;
+  experienceLevel?: string;
+  investmentGoals?: string[];
+  businessInterests?: string[];
+  businessStage?: string;
+  isOnboardingComplete?: boolean;
+  hasSeenFirstTimeGuidance?: boolean;
+  hasSeenFeatureIntroduction?: boolean;
+  completedGuidanceTips?: string[];
+  completedFeatureIntros?: string[];
 }
 
 export interface AuthResponse {
