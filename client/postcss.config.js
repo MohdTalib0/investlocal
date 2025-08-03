@@ -1,4 +1,7 @@
-// Empty PostCSS config to avoid plugin loading issues
+// PostCSS config with Tailwind CSS
 export default {
-  plugins: {}
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
 } 

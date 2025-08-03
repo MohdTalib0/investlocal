@@ -17,7 +17,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   css: {
-    postcss: false, // Disable PostCSS processing
+    postcss: true, // Re-enable PostCSS processing for Tailwind
   },
   server: {
     fs: {
