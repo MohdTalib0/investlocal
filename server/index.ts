@@ -22,8 +22,8 @@ app.get("/ping", (req: Request, res: Response) => {
   res.status(200).send("pong");
 });
 
-// Root endpoint for basic service check
-app.get("/", (req: Request, res: Response) => {
+// API status endpoint (not root)
+app.get("/api/status", (req: Request, res: Response) => {
   res.status(200).json({ 
     message: "CityFund API is running",
     version: "1.0.0",
