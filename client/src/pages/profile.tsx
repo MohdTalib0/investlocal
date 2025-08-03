@@ -42,6 +42,7 @@ import { authenticatedApiRequest, authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import BottomNavigation from "@/components/bottom-navigation";
 import Logo from "@/components/logo";
+import { useNotificationContext } from "@/contexts/NotificationContext";
 
 const updateProfileSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
@@ -98,6 +99,7 @@ export default function ProfilePage() {
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { settings: notificationSettings, updateSettings: updateNotificationSettings } = useNotificationContext();
   const user = authService.getUser();
 
   const { data: profile, isLoading } = useQuery({
@@ -741,6 +743,53 @@ export default function ProfilePage() {
                     Notifications
                   </h3>
                   <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white font-medium">Chat Notifications</p>
+                        <p className="text-gray-400 text-sm">New message alerts</p>
+                      </div>
+                      <Switch 
+                        checked={notificationSettings.enabled}
+                        onCheckedChange={(checked) => updateNotificationSettings({ enabled: checked })}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white font-medium">Notification Sound</p>
+                        <p className="text-gray-400 text-sm">Play sound for new messages</p>
+                      </div>
+                      <Switch 
+                        checked={notificationSettings.sound}
+                        onCheckedChange={(checked) => updateNotificationSettings({ sound: checked })}
+                        disabled={!notificationSettings.enabled}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white font-medium">Browser Notifications</p>
+                        <p className="text-gray-400 text-sm">Desktop notifications</p>
+                      </div>
+                      <Switch 
+                        checked={notificationSettings.browserNotifications}
+                        onCheckedChange={(checked) => updateNotificationSettings({ browserNotifications: checked })}
+                        disabled={!notificationSettings.enabled}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white font-medium">Vibration</p>
+                        <p className="text-gray-400 text-sm">Vibrate on new messages</p>
+                      </div>
+                      <Switch 
+                        checked={notificationSettings.vibration}
+                        onCheckedChange={(checked) => updateNotificationSettings({ vibration: checked })}
+                        disabled={!notificationSettings.enabled}
+                      />
+                    </div>
+                    
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-white font-medium">Push Notifications</p>

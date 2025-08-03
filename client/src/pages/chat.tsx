@@ -8,6 +8,7 @@ import { ArrowLeft, Phone, MoreVertical, Paperclip, Smile, Send, Download, FileT
 import { authenticatedApiRequest, authService } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import BottomNavigation from "@/components/bottom-navigation";
+import { useNotificationContext } from "@/contexts/NotificationContext";
 
 interface Message {
   id: string;
@@ -40,6 +41,7 @@ export default function ChatPage() {
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentUser = authService.getUser();
+  const { clearNotifications } = useNotificationContext();
   
   const [selectedUserId, setSelectedUserId] = useState<string | null>(params.userId || null);
 
@@ -111,8 +113,10 @@ export default function ChatPage() {
   useEffect(() => {
     if (selectedUserId && messages.length > 0) {
       markAsRead.mutate(selectedUserId);
+      // Clear notifications for this conversation
+      clearNotifications(selectedUserId);
     }
-  }, [selectedUserId, messages.length]);
+  }, [selectedUserId, messages.length, clearNotifications]);
 
   const onSubmit = (data: { message: string }) => {
     if (!data.message.trim()) return;

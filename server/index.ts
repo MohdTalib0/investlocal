@@ -1,7 +1,9 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
+import { createServer } from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import NotificationService from "./websocket";
 
 const app = express();
 app.use(express.json());
@@ -79,8 +81,12 @@ const keepAlive = () => {
 };
 
 (async () => {
-  // Register API routes first
-  const server = await registerRoutes(app);
+  // Initialize WebSocket notification service first
+  const tempServer = createServer(app);
+  const notificationService = new NotificationService(tempServer);
+  
+  // Register API routes with notification service
+  const server = await registerRoutes(app, notificationService);
 
   // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

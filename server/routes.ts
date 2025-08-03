@@ -25,7 +25,7 @@ const authenticateToken = (req: any, res: any, next: any) => {
   });
 };
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express, notificationService?: any): Promise<Server> {
   // Auth routes
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -508,6 +508,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const message = await storage.createMessage(messageData);
+      
+      // Send notification to receiver
+      try {
+        const sender = await storage.getUser(req.user.userId);
+        const receiver = await storage.getUser(messageData.receiverId);
+        
+        if (sender && receiver) {
+          // Get the notification service from the app
+          const notificationService = (req.app as any).notificationService;
+          
+          if (notificationService) {
+            notificationService.sendNotification(messageData.receiverId, {
+              type: 'new_message',
+              messageId: message.id,
+              senderId: req.user.userId,
+              senderName: sender.fullName || sender.email,
+              content: messageData.content,
+              timestamp: message.createdAt,
+              conversationId: messageData.receiverId,
+              receiverId: messageData.receiverId,
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error("Notification error:", notificationError);
+        // Don't fail the message send if notification fails
+      }
+      
       res.json(message);
     } catch (error) {
       console.error("Create message error:", error);
@@ -685,5 +713,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  // Store notification service in app for routes to access
+  if (notificationService) {
+    (app as any).notificationService = notificationService;
+  }
+  
   return httpServer;
 }
