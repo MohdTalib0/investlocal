@@ -421,16 +421,17 @@ export default function PostDetailPage() {
             >
               {authorName}
             </button>
-            <p className="text-gray-400 text-sm">
-              {post.author?.userType === 'entrepreneur' ? 'Entrepreneur' : 'Investor'} • {timeAgo}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-gray-400 text-sm">
+                {post.author?.userType === 'entrepreneur' ? 'Entrepreneur' : 'Investor'} • {timeAgo}
+              </p>
+              {post.category && (
+                <Badge variant="default" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold px-3 py-1">
+                  🏷️ {post.category}
+                </Badge>
+              )}
+            </div>
           </div>
-          
-                     {post.category && (
-             <Badge variant="default" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold px-3 py-1">
-               🏷️ {post.category}
-             </Badge>
-           )}
         </div>
 
         {/* Post Title */}

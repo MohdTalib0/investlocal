@@ -389,6 +389,7 @@ export default function UnifiedDashboard() {
   const InvestmentPostCard = ({ post }: { post: Post }) => {
     const isLiked = postLikes[post.id]?.some((like: any) => like.userId === user?.id);
     const likeCount = postLikes[post.id]?.length || 0;
+    const comments = postComments[post.id] || [];
     const [showFullContent, setShowFullContent] = useState(false);
     
     const shouldTruncate = post.content.length > 150;
@@ -440,15 +441,17 @@ export default function UnifiedDashboard() {
               >
                 {authorName}
               </button>
-              <p className="text-gray-400 text-xs">
-                {post.author?.userType === 'entrepreneur' ? 'Entrepreneur' : 'Investor'} • {timeAgo}
-              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-gray-400 text-xs">
+                  {post.author?.userType === 'entrepreneur' ? 'Entrepreneur' : 'Investor'} • {timeAgo}
+                </p>
+                {post.category && (
+                  <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
+                    {post.category}
+                  </Badge>
+                )}
+              </div>
           </div>
-            {post.category && (
-              <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
-                {post.category}
-          </Badge>
-            )}
           </div>
                   <DropdownMenu open={openDropdown === post.id} onOpenChange={(open) => setOpenDropdown(open ? post.id : null)}>
                     <DropdownMenuTrigger asChild>
@@ -943,6 +946,19 @@ export default function UnifiedDashboard() {
           <Button 
             variant="ghost" 
             size="sm" 
+            className="flex items-center gap-2 text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all duration-200"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLocation(`/post/${post.id}`);
+            }}
+          >
+            <MessageCircle className="h-5 w-5" />
+            <span className="text-sm font-medium">{comments.length}</span>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
             className="flex items-center justify-center text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all duration-200"
             onClick={(e) => {
               e.stopPropagation();
@@ -1025,15 +1041,17 @@ export default function UnifiedDashboard() {
                   >
                     {authorName}
                   </button>
-                  <p className="text-gray-400 text-sm">
-                    {post.author?.userType === 'entrepreneur' ? 'Entrepreneur' : 'Investor'} • {timeAgo}
-                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-gray-400 text-sm">
+                      {post.author?.userType === 'entrepreneur' ? 'Entrepreneur' : 'Investor'} • {timeAgo}
+                    </p>
+                    {post.category && (
+                      <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
+                        {post.category}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                {post.category && (
-                  <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
-                    {post.category}
-                  </Badge>
-                )}
                 <DropdownMenu open={openDropdown === post.id} onOpenChange={(open) => setOpenDropdown(open ? post.id : null)}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
