@@ -538,36 +538,43 @@ export default function UnifiedDashboard() {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
-          <div className="flex items-center gap-1 bg-green-900/30 px-2 py-1 rounded-full border border-green-500/20">
-            <DollarSign className="h-3 w-3 text-green-400" />
-            <span className="font-medium text-green-300 text-xs">₹{formatAmount(post.fundingMin || 0)}-{formatAmount(post.fundingMax || 0)}</span>
-          </div>
-          {post.expectedRoi && (
-            <div className="flex items-center gap-1 bg-blue-900/30 px-2 py-1 rounded-full border border-blue-500/20">
-              <svg className="h-3 w-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              <span className="font-medium text-blue-300 text-xs">{post.expectedRoi} ROI</span>
+        <div className="space-y-2 text-sm text-gray-400 mb-4">
+          {/* First row: Fund and ROI */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-green-900/30 px-2 py-1 rounded-full border border-green-500/20">
+              <DollarSign className="h-3 w-3 text-green-400" />
+              <span className="font-medium text-green-300 text-xs">₹{formatAmount(post.fundingMin || 0)}-{formatAmount(post.fundingMax || 0)}</span>
             </div>
-          )}
-          {post.teamSize && (
-            <div className="flex items-center gap-1 bg-purple-900/30 px-2 py-1 rounded-full border border-purple-500/20">
-              <svg className="h-3 w-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-              </svg>
-              <span className="font-medium text-purple-300 text-xs">{post.teamSize} Team</span>
-            </div>
-          )}
-          {post.timeline && (
-            <div className="flex items-center gap-1 bg-orange-900/30 px-2 py-1 rounded-full border border-orange-500/20">
-              <svg className="h-3 w-3 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="font-medium text-orange-300 text-xs">{post.timeline}</span>
-            </div>
-          )}
+            {post.expectedRoi && (
+              <div className="flex items-center gap-1 bg-blue-900/30 px-2 py-1 rounded-full border border-blue-500/20">
+                <svg className="h-3 w-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                <span className="font-medium text-blue-300 text-xs">{post.expectedRoi} ROI</span>
               </div>
+            )}
+          </div>
+          
+          {/* Second row: Team and Timeline */}
+          <div className="flex items-center gap-2">
+            {post.teamSize && (
+              <div className="flex items-center gap-1 bg-purple-900/30 px-2 py-1 rounded-full border border-purple-500/20">
+                <svg className="h-3 w-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+                <span className="font-medium text-purple-300 text-xs">{post.teamSize} Team</span>
+              </div>
+            )}
+            {post.timeline && (
+              <div className="flex items-center gap-1 bg-orange-900/30 px-2 py-1 rounded-full border border-orange-500/20">
+                <svg className="h-3 w-3 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-medium text-orange-300 text-xs">{post.timeline}</span>
+              </div>
+            )}
+          </div>
+        </div>
               
         {/* Post Images - Collage Style */}
         {post.images && post.images.length > 0 && (
@@ -1728,7 +1735,7 @@ export default function UnifiedDashboard() {
               className="flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-semibold shadow-lg"
             >
               <Plus className="h-4 w-4" />
-              Create Post
+              Post
             </Button>
           </div>
         </div>

@@ -17,6 +17,8 @@ import OpportunityDetailPage from "@/pages/opportunity-detail";
 import PostDetailPage from "@/pages/post-detail";
 import ChatPage from "@/pages/chat";
 import ProfilePage from "@/pages/profile";
+import EditProfilePage from "@/pages/edit-profile";
+import SettingsPage from "@/pages/settings";
 import AdminDashboardPage from "@/pages/admin-dashboard";
 import UserProfilePage from "@/pages/user-profile";
 import AnalyticsPage from "@/pages/analytics";
@@ -74,6 +76,16 @@ function Router() {
       <Route path="/profile">
         <ProtectedRoute>
           <ProfilePage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/edit-profile">
+        <ProtectedRoute>
+          <EditProfilePage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings">
+        <ProtectedRoute>
+          <SettingsPage />
         </ProtectedRoute>
       </Route>
       <Route path="/user">
